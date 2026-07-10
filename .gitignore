@@ -1,0 +1,18 @@
+# ── Sensitive local files — NEVER commit these ─────────────────────────────
+config.py
+service_account.json
+auth_state.json
+
+# ── Python cache ────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── OS junk ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
