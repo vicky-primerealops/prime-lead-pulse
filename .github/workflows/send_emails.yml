@@ -1,11 +1,8 @@
 name: Send Daily Outreach Emails
 
 on:
-  # ── Runs every day at 7:30 PM IST = 14:00 UTC ──────────────────────────
   schedule:
     - cron: "0 14 * * *"
-
-  # ── Also lets you trigger it manually from GitHub's website ────────────
   workflow_dispatch:
 
 jobs:
@@ -14,42 +11,23 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      # 1. Check out the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3. Install dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # 4. Reconstruct service_account.json from the GitHub Secret
       - name: Write service_account.json
         run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
 
-      # 5. Write a minimal config.py — only credentials, no templates
-      #    (Email templates live safely in send_emails.py instead)
-      - name: Write config.py
-        run: |
-          cat > config.py << 'PYEOF'
-import os
-SERVICE_ACCOUNT_FILE = "service_account.json"
-SPREADSHEET_ID       = os.environ["SPREADSHEET_ID"]
-SHEET_RANGE          = "Sheet1!A2:B"
-SMTP_HOST            = os.environ["SMTP_HOST"]
-SMTP_PORT            = int(os.environ["SMTP_PORT"])
-SMTP_USER            = os.environ["SMTP_USER"]
-SMTP_PASSWORD        = os.environ["SMTP_PASSWORD"]
-FROM_NAME            = os.environ.get("FROM_NAME", "Prime Real Ops")
-SEND_DELAY_SECONDS   = 2
-PYEOF
+      - name: Create config.py from cloud template
+        run: cp cloud_config.py config.py
 
-      # 6. Run the script in auto mode (no y/N prompt needed)
       - name: Run email sender
         env:
           SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
