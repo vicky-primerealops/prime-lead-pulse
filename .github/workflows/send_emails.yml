@@ -2,7 +2,7 @@ name: Send Daily Outreach Emails
 
 on:
   schedule:
-    - cron: "0 14 * * *"
+    - cron: "30 13 * * *"   # 13:30 UTC = 7:00 PM IST (avoids peak-hour delays)
   workflow_dispatch:
 
 jobs:
