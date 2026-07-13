@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
 log = logging.getLogger(__name__)
 
 # ── How many emails to send per run ────────────────────────────────────────
-EMAILS_PER_RUN = 50
+EMAILS_PER_RUN = 75
 
 # ── GoDaddy IMAP settings ───────────────────────────────────────────────────
 IMAP_HOST = "imap.secureserver.net"
