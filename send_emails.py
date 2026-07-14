@@ -1,4 +1,5 @@
 import argparse
+import base64
 import email.policy
 import imaplib
 import smtplib
@@ -15,7 +16,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
 log = logging.getLogger(__name__)
 
 # ── How many emails to send per run ────────────────────────────────────────
-EMAILS_PER_RUN = 75
+EMAILS_PER_RUN = 30
+
+# ── Tracking pixel (set to your Vercel domain) ────────────────────────────
+# Once your dev team deploys the tracking API, set this to True
+TRACKING_ENABLED = True
+TRACKING_URL = "https://primerealops.com/api/track"
 
 # ── GoDaddy IMAP settings ───────────────────────────────────────────────────
 IMAP_HOST = "imap.secureserver.net"
@@ -32,7 +38,7 @@ Your highest value as a broker is closing deals and guiding your team, not getti
 
 At Prime Real Ops, we specialize in Flawless Listing Inputs so you don't have to. We take complete ownership of your data entry, ensuring 100% accuracy and rapid market deployment. With our 72-Hour Rapid Deployment, we seamlessly integrate with your existing platforms and get started with minimal onboarding downtime.
 
-If you are ready to offload your listing inputs to a reliable operations partner at only $12/listing, I'd love to connect.
+If you are ready to offload your listing inputs to a reliable operations partner, I'd love to connect.
 
 Are you open to a brief chat? We can set up a time here: [https://calendar.app.google/wtiXBDUQM3wcamJR9]
 
@@ -45,6 +51,9 @@ Mumbai, India
 
 "Jack of all trades, master of none,
 But oftentimes better than a master of one."
+
+---
+If you'd prefer not to receive these emails, simply reply with "Unsubscribe".
 """
 
 EMAIL_BODY_HTML = """\
@@ -66,7 +75,7 @@ EMAIL_BODY_HTML = """\
 
     <p style="margin-bottom: 20px;">At <a href="https://primerealops.com" class="blue-link">Prime Real Ops</a>, we specialize in <strong>Flawless Listing Inputs</strong> so you don't have to. We take complete ownership of your data entry, ensuring 100% accuracy and rapid market deployment. With our 72-Hour Rapid Deployment, we seamlessly integrate with your existing platforms and get started with minimal onboarding downtime.</p>
 
-    <p style="margin-bottom: 20px;">If you are ready to offload your listing inputs to a reliable operations partner at only <strong>$12/listing</strong>, I'd love to connect.</p>
+    <p style="margin-bottom: 20px;">If you are ready to offload your listing inputs to a reliable operations partner, I'd love to connect.</p>
 
     <p style="margin-bottom: 30px;"><strong>Are you open to a brief chat? We can set up a time <a href="https://calendar.app.google/wtiXBDUQM3wcamJR9" class="blue-link">[HERE]</a>.</strong></p>
 
@@ -101,6 +110,11 @@ EMAIL_BODY_HTML = """\
       </td>
     </tr>
   </table>
+
+  <!-- Unsubscribe footer -->
+  <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999999; font-family: Arial, sans-serif;">
+    <p style="margin: 0;">If you'd prefer not to receive these emails, simply reply with "Unsubscribe" and we'll remove you from our list.</p>
+  </div>
 
 </body>
 </html>
@@ -182,10 +196,22 @@ def build_message(to_name, to_email):
     body_text = EMAIL_BODY_TEXT.format(name=first_name)
     body_html = EMAIL_BODY_HTML.format(name=first_name)
 
+    # Inject invisible tracking pixel before </body> if enabled
+    if TRACKING_ENABLED:
+        encoded_email = base64.urlsafe_b64encode(to_email.encode()).decode()
+        pixel_tag = (
+            f'<img src="{TRACKING_URL}?id={encoded_email}" '
+            f'width="1" height="1" alt="" style="display:none" />'
+        )
+        body_html = body_html.replace("</body>", f"{pixel_tag}\n</body>")
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = f"{cfg.FROM_NAME} <{cfg.SMTP_USER}>"
     msg["To"]      = to_email
+    # Unsubscribe header — Gmail requires this for bulk email
+    msg["List-Unsubscribe"] = f"<mailto:{cfg.SMTP_USER}?subject=Unsubscribe>"
+    msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     msg.attach(MIMEText(body_text, "plain"))
     msg.attach(MIMEText(body_html, "html"))
     return msg
