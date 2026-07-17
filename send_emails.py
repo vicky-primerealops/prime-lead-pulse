@@ -7,7 +7,6 @@ import smtplib
 import time
 import logging
 from datetime import datetime
-from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from google.oauth2 import service_account
@@ -26,9 +25,6 @@ TRACKING_ENABLED = True
 TRACKING_URL      = "https://props-platform-api.vercel.app/api/track"
 TRACKING_CTX      = "prime-realops-outreach"   # campaign label for the dashboard
 
-# ── Inline profile photo (no CDN needed) ────────────────────────────────────
-# Vicky.jpeg lives alongside this script and on GitHub
-PHOTO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Vicky.jpeg")
 
 # ── GoDaddy IMAP settings ───────────────────────────────────────────────────
 IMAP_HOST = "imap.secureserver.net"
@@ -92,7 +88,6 @@ EMAIL_BODY_HTML = """\
   <table cellpadding="0" cellspacing="0" border="0" class="sig-text" style="width: 100%; max-width: 500px;">
     <tr>
       <td width="110" style="vertical-align: top; text-align: center; padding-right: 15px;">
-        <img src="cid:vicky_photo" alt="Vicky Thakkar" width="90" height="90" style="border-radius: 50%; display: block; margin: 0 auto; margin-bottom: 12px; object-fit: cover;">
         <a href="https://calendar.app.google/wtiXBDUQM3wcamJR9" style="font-weight: bold; color: #0056b3; text-decoration: underline; font-size: 14px;">Book A Call</a>
       </td>
       <td width="3" style="background-color: #0056b3; vertical-align: top;"></td>
@@ -211,28 +206,14 @@ def build_message(to_name, to_email):
         )
         body_html = body_html.replace("</body>", f"{pixel_tag}\n</body>")
 
-    # ── Build MIME structure: related > alternative + inline photo ───────────
-    msg_related  = MIMEMultipart("related")
-    msg_related["Subject"] = subject
-    msg_related["From"]    = f"{cfg.FROM_NAME} <{cfg.SMTP_USER}>"
-    msg_related["To"]      = to_email
-
-    msg_alt = MIMEMultipart("alternative")
-    msg_alt.attach(MIMEText(body_text, "plain"))
-    msg_alt.attach(MIMEText(body_html, "html"))
-    msg_related.attach(msg_alt)
-
-    # Attach profile photo inline (no external URL)
-    if os.path.exists(PHOTO_PATH):
-        with open(PHOTO_PATH, "rb") as f:
-            img = MIMEImage(f.read(), _subtype="jpeg")
-        img.add_header("Content-ID", "<vicky_photo>")
-        img.add_header("Content-Disposition", "inline", filename="vicky.jpeg")
-        msg_related.attach(img)
-    else:
-        log.warning("Profile photo not found at %s — sending without photo", PHOTO_PATH)
-
-    return msg_related
+    # ── Build final message ──────────────────────────────────────────
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = f"{cfg.FROM_NAME} <{cfg.SMTP_USER}>"
+    msg["To"]      = to_email
+    msg.attach(MIMEText(body_text, "plain"))
+    msg.attach(MIMEText(body_html, "html"))
+    return msg
 
 
 def send_emails(contacts, service):
