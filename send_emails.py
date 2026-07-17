@@ -86,6 +86,7 @@ EMAIL_BODY_HTML = """\
   </div>
 
   <div style="border-top: 2px solid #0056b3; padding-top: 12px; max-width: 480px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #000000;">
+    <img src="https://lh3.googleusercontent.com/d/1Zz6uT1DvadvwclNj0Vihrj0N42gKT9cE" alt="Vicky Thakkar" width="80" height="80" style="border-radius: 50%; display: block; margin-bottom: 10px; object-fit: cover;">
     <p style="margin: 0 0 2px 0; font-size: 16px; font-weight: bold; color: #000000;">Vicky Thakkar</p>
     <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;"><strong>Founder | PrimeRealOps</strong></p>
     <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
