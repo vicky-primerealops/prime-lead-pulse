@@ -20,7 +20,7 @@ EMAILS_PER_RUN = 1   # TEMPORARY: set to 1 for test, change back to 30 after
 
 # ── Tracking pixel (set to your Vercel domain) ────────────────────────────
 # Once your dev team deploys the tracking API, set this to True
-TRACKING_ENABLED = True
+TRACKING_ENABLED = False   # Enable once dev team deploys the /api/track endpoint
 TRACKING_URL = "https://primerealops.com/api/track"
 
 # ── GoDaddy IMAP settings ───────────────────────────────────────────────────
@@ -85,7 +85,6 @@ EMAIL_BODY_HTML = """\
   <table cellpadding="0" cellspacing="0" border="0" class="sig-text" style="width: 100%; max-width: 500px;">
     <tr>
       <td width="110" style="vertical-align: top; text-align: center; padding-right: 15px;">
-        <img src="https://permanent-assets-download.flockmail.com/signature/10818727/2026-06-03_768467db64357aae9800_155194" alt="Vicky Thakkar" width="90" height="90" style="border-radius: 50%; display: block; margin: 0 auto; margin-bottom: 12px; object-fit: cover;">
         <a href="https://calendar.app.google/wtiXBDUQM3wcamJR9" style="font-weight: bold; color: #0056b3; text-decoration: underline; font-size: 14px;">Book A Call</a>
       </td>
       <td width="3" style="background-color: #0056b3; vertical-align: top;"></td>
@@ -98,10 +97,10 @@ EMAIL_BODY_HTML = """\
         <p style="margin: 0 0 12px 0; font-size: 12px; color: #333333;">
           <span style="font-size: 14px; color: #666;">&#128205;</span> Mumbai, India
         </p>
-        <p style="margin: 0 0 15px 0;">
-          <a href="https://instagram.com/v.p.thakkar" style="text-decoration: none; margin-right: 6px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" width="18" alt="Instagram"></a>
-          <a href="https://www.linkedin.com/in/vickythegeneralist/" style="text-decoration: none; margin-right: 6px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="18" alt="LinkedIn"></a>
-          <a href="https://wa.me/16786789750" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="18" alt="WhatsApp"></a>
+        <p style="margin: 0 0 15px 0; font-size: 12px;">
+          <a href="https://instagram.com/v.p.thakkar" style="color: #0056b3; text-decoration: none; margin-right: 10px;">Instagram</a>
+          <a href="https://www.linkedin.com/in/vickythegeneralist/" style="color: #0056b3; text-decoration: none; margin-right: 10px;">LinkedIn</a>
+          <a href="https://wa.me/16786789750" style="color: #0056b3; text-decoration: none;">WhatsApp</a>
         </p>
         <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.5; font-family: Georgia, serif;">
           "Jack of all trades, master of none,<br>
@@ -209,9 +208,6 @@ def build_message(to_name, to_email):
     msg["Subject"] = subject
     msg["From"]    = f"{cfg.FROM_NAME} <{cfg.SMTP_USER}>"
     msg["To"]      = to_email
-    # Unsubscribe header — Gmail requires this for bulk email
-    msg["List-Unsubscribe"] = f"<mailto:{cfg.SMTP_USER}?subject=Unsubscribe>"
-    msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     msg.attach(MIMEText(body_text, "plain"))
     msg.attach(MIMEText(body_html, "html"))
     return msg
