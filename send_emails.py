@@ -85,22 +85,29 @@ EMAIL_BODY_HTML = """\
     <p style="margin-bottom: 25px;">Best Regards,</p>
   </div>
 
-  <div style="border-top: 2px solid #0056b3; padding-top: 12px; max-width: 480px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #000000;">
-    <img src="https://lh3.googleusercontent.com/d/1Zz6uT1DvadvwclNj0Vihrj0N42gKT9cE" alt="Vicky Thakkar" width="80" height="80" style="border-radius: 50%; display: block; margin-bottom: 10px; object-fit: cover;">
-    <p style="margin: 0 0 2px 0; font-size: 16px; font-weight: bold; color: #000000;">Vicky Thakkar</p>
-    <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;"><strong>Founder | PrimeRealOps</strong></p>
-    <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
-    <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
-    <p style="margin: 0 0 10px 0; font-size: 12px;">
-      <a href="https://instagram.com/v.p.thakkar" style="color: #0056b3; text-decoration: none; margin-right: 12px;">Instagram</a>
-      <a href="https://www.linkedin.com/in/vickythegeneralist/" style="color: #0056b3; text-decoration: none; margin-right: 12px;">LinkedIn</a>
-      <a href="https://wa.me/16786789750" style="color: #0056b3; text-decoration: none; margin-right: 12px;">WhatsApp</a>
-      <a href="https://calendar.app.google/wtiXBDUQM3wcamJR9" style="color: #0056b3; text-decoration: none; font-weight: bold;">📅 Book A Call</a>
-    </p>
-    <p style="margin: 0; font-size: 12px; font-weight: bold; font-style: italic; color: #333333; font-family: Georgia, serif;">
-      "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
-    </p>
-  </div>
+  <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 500px; font-family: Arial, Helvetica, sans-serif;">
+    <tr>
+      <td width="110" style="vertical-align: top; text-align: center; padding-right: 15px;">
+        <img src="https://lh3.googleusercontent.com/d/1Zz6uT1DvadvwclNj0Vihrj0N42gKT9cE" alt="Vicky Thakkar" width="90" height="90" style="border-radius: 50%; display: block; margin: 0 auto 10px auto; object-fit: cover;">
+        <a href="https://calendar.app.google/wtiXBDUQM3wcamJR9" style="font-weight: bold; color: #0056b3; text-decoration: underline; font-size: 13px;">Book A Call</a>
+      </td>
+      <td width="3" style="background-color: #0056b3; vertical-align: top;">&nbsp;</td>
+      <td style="vertical-align: top; padding-left: 15px;">
+        <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">Vicky Thakkar</p>
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Founder | PrimeRealOps</strong></p>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
+        <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
+        <p style="margin: 0 0 10px 0; font-size: 12px;">
+          <a href="https://instagram.com/v.p.thakkar" style="color: #0056b3; text-decoration: none; margin-right: 10px;">Instagram</a>
+          <a href="https://www.linkedin.com/in/vickythegeneralist/" style="color: #0056b3; text-decoration: none; margin-right: 10px;">LinkedIn</a>
+          <a href="https://wa.me/16786789750" style="color: #0056b3; text-decoration: none;">WhatsApp</a>
+        </p>
+        <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
+          "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
+        </p>
+      </td>
+    </tr>
+  </table>
 
   <!-- Unsubscribe footer -->
   <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999999; font-family: Arial, sans-serif;">
