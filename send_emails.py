@@ -22,8 +22,9 @@ EMAILS_PER_RUN = 30
 
 # ── Tracking pixel (set to your Vercel domain) ────────────────────────────
 # Once your dev team deploys the tracking API, set this to True
-TRACKING_ENABLED = False   # Enable once dev team deploys the /api/track endpoint
-TRACKING_URL = "https://primerealops.com/api/track"
+TRACKING_ENABLED = True
+TRACKING_URL      = "https://props-platform-api.vercel.app/api/track"
+TRACKING_CTX      = "prime-realops-outreach"   # campaign label for the dashboard
 
 # ── Inline profile photo (no CDN needed) ────────────────────────────────────
 # Vicky.jpeg lives alongside this script and on GitHub
@@ -203,9 +204,9 @@ def build_message(to_name, to_email):
 
     # Inject tracking pixel if enabled
     if TRACKING_ENABLED:
-        encoded_email = base64.urlsafe_b64encode(to_email.encode()).decode()
+        encoded_email = base64.b64encode(to_email.encode()).decode()  # standard base64
         pixel_tag = (
-            f'<img src="{TRACKING_URL}?id={encoded_email}" '
+            f'<img src="{TRACKING_URL}?id={encoded_email}&ctx={TRACKING_CTX}" '
             f'width="1" height="1" alt="" style="display:none" />'
         )
         body_html = body_html.replace("</body>", f"{pixel_tag}\n</body>")
