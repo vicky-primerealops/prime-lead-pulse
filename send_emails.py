@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
 log = logging.getLogger(__name__)
 
 # ── How many emails to send per run ────────────────────────────────────────
-EMAILS_PER_RUN = 30
+EMAILS_PER_RUN = 1   # TEMPORARY: set to 1 for test, change back to 30 after
 
 # ── Tracking pixel (set to your Vercel domain) ────────────────────────────
 # Once your dev team deploys the tracking API, set this to True
