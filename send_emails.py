@@ -60,9 +60,6 @@ Mumbai, India
 
 "Jack of all trades, master of none,
 But oftentimes better than a master of one."
-
----
-If you'd prefer not to receive these emails, simply reply with "Unsubscribe".
 """
 
 EMAIL_BODY_HTML = """\
@@ -122,11 +119,6 @@ EMAIL_BODY_HTML = """\
       </td>
     </tr>
   </table>
-
-  <!-- Unsubscribe footer -->
-  <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999999; font-family: Arial, sans-serif;">
-    <p style="margin: 0;">If you'd prefer not to receive these emails, simply reply with "Unsubscribe" and we'll remove you from our list.</p>
-  </div>
 
 </body>
 </html>
