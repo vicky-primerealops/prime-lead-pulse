@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
 log = logging.getLogger(__name__)
 
 # ── How many emails to send per run ────────────────────────────────────────
-EMAILS_PER_RUN = 30
+EMAILS_PER_RUN = 20
 
 # ── Tracking pixel (set to your Vercel domain) ────────────────────────────
 # Once your dev team deploys the tracking API, set this to True
@@ -32,16 +32,22 @@ IMAP_PORT = 993
 SENT_FOLDER_CANDIDATES = ["Sent", "Sent Items", "INBOX.Sent", "[Gmail]/Sent Mail"]
 
 # ── Email templates (live here so cloud never mangles them) ─────────────────
-EMAIL_SUBJECT = "{name} X Prime Real Ops | Streamlined Listing Input Services"
+EMAIL_SUBJECT = "{name} X PrimeRealOps | Streamlining Your Real Estate Operations"
 
 EMAIL_BODY_TEXT = """\
-Hello {name},
+Hi {name},
 
-Your highest value as a broker is closing deals and guiding your team, not getting buried in time-consuming data entry.
+Your highest value as a broker is closing deals and scaling your team, not getting bogged down by backend administration and paperwork.
 
-At Prime Real Ops, we specialize in Flawless Listing Inputs so you don't have to. We take complete ownership of your data entry, ensuring 100% accuracy and rapid market deployment. With our 72-Hour Rapid Deployment, we seamlessly integrate with your existing platforms and get started with minimal onboarding downtime.
+At Prime Real Ops, we function as your complete backend engine. We plug directly into your existing platforms to handle the heavy lifting across three core areas:
 
-If you are ready to offload your listing inputs to a reliable operations partner, I'd love to connect.
+- Listing Management: Flawless MLS data entry and compliance checks with a 100% accuracy guarantee.
+- Transaction Coordination: Seamless contract-to-close management to keep your clients happy and ensure on-time closings.
+- Executive Services: Dedicated, elite real estate VAs to manage your inbox, CRM, and daily operational friction.
+
+With our 72-Hour Rapid Deployment, we can take this off your plate seamlessly with minimal onboarding downtime.
+
+If you are ready to stop managing chaos and start focusing on growth, I'd love to connect.
 
 Are you open to a brief chat? We can set up a time here: [https://calendar.app.google/wtiXBDUQM3wcamJR9]
 
@@ -72,13 +78,21 @@ EMAIL_BODY_HTML = """\
 <body style="margin: 0; padding: 0;">
 
   <div class="body-text">
-    <p style="margin-bottom: 20px;"><strong>Hello {name},</strong></p>
+    <p style="margin-bottom: 20px;"><strong>Hi {name},</strong></p>
 
-    <p style="margin-bottom: 20px;">Your highest value as a broker is closing deals and guiding your team, not getting buried in time-consuming data entry.</p>
+    <p style="margin-bottom: 20px;">Your highest value as a broker is closing deals and scaling your team, not getting bogged down by backend administration and paperwork.</p>
 
-    <p style="margin-bottom: 20px;">At <a href="https://primerealops.com" class="blue-link">Prime Real Ops</a>, we specialize in <strong>Flawless Listing Inputs</strong> so you don't have to. We take complete ownership of your data entry, ensuring 100% accuracy and rapid market deployment. With our 72-Hour Rapid Deployment, we seamlessly integrate with your existing platforms and get started with minimal onboarding downtime.</p>
+    <p style="margin-bottom: 20px;">At <a href="https://primerealops.com" class="blue-link">Prime Real Ops</a>, we function as your complete backend engine. We plug directly into your existing platforms to handle the heavy lifting across three core areas:</p>
 
-    <p style="margin-bottom: 20px;">If you are ready to offload your listing inputs to a reliable operations partner, I'd love to connect.</p>
+    <ul style="margin-bottom: 20px; padding-left: 20px;">
+      <li style="margin-bottom: 10px;"><strong>Listing Management:</strong> Flawless MLS data entry and compliance checks with a 100% accuracy guarantee.</li>
+      <li style="margin-bottom: 10px;"><strong>Transaction Coordination:</strong> Seamless contract-to-close management to keep your clients happy and ensure on-time closings.</li>
+      <li style="margin-bottom: 10px;"><strong>Executive Services:</strong> Dedicated, elite real estate VAs to manage your inbox, CRM, and daily operational friction.</li>
+    </ul>
+
+    <p style="margin-bottom: 20px;">With our 72-Hour Rapid Deployment, we can take this off your plate seamlessly with minimal onboarding downtime.</p>
+
+    <p style="margin-bottom: 20px;">If you are ready to stop managing chaos and start focusing on growth, I'd love to connect.</p>
 
     <p style="margin-bottom: 30px;"><strong>Are you open to a brief chat? We can set up a time <a href="https://calendar.app.google/wtiXBDUQM3wcamJR9" class="blue-link">[HERE]</a>.</strong></p>
 
