@@ -14,4 +14,4 @@ SMTP_PORT            = int(os.environ["SMTP_PORT"])
 SMTP_USER            = os.environ["SMTP_USER"]
 SMTP_PASSWORD        = os.environ["SMTP_PASSWORD"]
 FROM_NAME            = os.environ.get("FROM_NAME", "Prime Real Ops")
-SEND_DELAY_SECONDS   = 60
+SEND_DELAY_SECONDS   = 120

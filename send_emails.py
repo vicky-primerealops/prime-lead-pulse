@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
 log = logging.getLogger(__name__)
 
 # ── How many emails to send per run ────────────────────────────────────────
-EMAILS_PER_RUN = 20
+EMAILS_PER_RUN = 30
 
 # ── Tracking pixel (set to your Vercel domain) ────────────────────────────
 # Once your dev team deploys the tracking API, set this to True
@@ -111,10 +111,10 @@ EMAIL_BODY_HTML = """\
         <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Founder | PrimeRealOps</strong></p>
         <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
         <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
-        <p style="margin: 0 0 10px 0; font-size: 12px;">
-          <a href="https://instagram.com/v.p.thakkar" style="color: #0056b3; text-decoration: none; margin-right: 10px;">Instagram</a>
-          <a href="https://www.linkedin.com/in/vickythegeneralist/" style="color: #0056b3; text-decoration: none; margin-right: 10px;">LinkedIn</a>
-          <a href="https://wa.me/16786789750" style="color: #0056b3; text-decoration: none;">WhatsApp</a>
+        <p style="margin: 0 0 10px 0;">
+          <a href="https://instagram.com/v.p.thakkar" style="text-decoration: none; margin-right: 6px;"><img src="https://lh3.googleusercontent.com/d/1HGD2R2aucNdnjtIy3YS6M72r0N7YRqlt" width="18" height="18" alt="Instagram"></a>
+          <a href="https://www.linkedin.com/in/vickythegeneralist/" style="text-decoration: none; margin-right: 6px;"><img src="https://lh3.googleusercontent.com/d/1BgqKsMlLAJ8htZ-lKTlDN5XiJtkQfoSs" width="18" height="18" alt="LinkedIn"></a>
+          <a href="https://wa.me/16786789750" style="text-decoration: none;"><img src="https://lh3.googleusercontent.com/d/17le7YGIuVaDNMhya04RFKiyQJKk5W0ao" width="18" height="18" alt="WhatsApp"></a>
         </p>
         <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
           "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
