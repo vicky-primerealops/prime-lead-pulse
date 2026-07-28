@@ -15,7 +15,7 @@ FRIENDS_EMAILS = [
     "riddhisabby@gmail.com", "nareshodc1619@gmail.com", "shivani@code-b.in",
     "shivani.subnani@ves.ac.in", "altmesh@techacadium.com", "shivani@techacadium.com",
     "narsim2212@gmail.com", "pavansabnani@gmail.com", "mishtisabby@gmail.com",
-    "helloaltmesh@gmail.com", "khantoshifa@gmail.com", "deepa.thakkar@here.com"
+    "helloaltmesh@gmail.com", "deepa.thakkar@here.com"
 ]
 
 OPEN_ENDED_REPLIES = [
