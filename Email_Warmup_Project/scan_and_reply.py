@@ -65,9 +65,33 @@ def main():
         server_info = get_server_info(email_addr)
         
         try:
-            log.info(f"[{email_addr}] Checking inbox...")
+            log.info(f"[{email_addr}] Checking Spam and Inbox...")
             mail = imaplib.IMAP4_SSL(server_info["imap"])
             mail.login(email_addr, password)
+            
+            # --- 1. Check Spam Folder ---
+            status, folders = mail.list()
+            spam_folder = None
+            for f in folders:
+                f_lower = f.lower()
+                if b'spam' in f_lower or b'junk' in f_lower:
+                    spam_folder = f.decode().split(' "/" ')[-1]
+                    break
+                    
+            if spam_folder:
+                mail.select(spam_folder)
+                for friend in unique_friends:
+                    status, messages = mail.search(None, f'(FROM "{friend}")')
+                    if status == "OK" and messages[0]:
+                        nums = messages[0].split()
+                        if nums:
+                            log.info(f"[{email_addr}] Found {len(nums)} replies from {friend} in SPAM. Rescuing to Inbox...")
+                        for num in nums:
+                            mail.copy(num, "INBOX")
+                            mail.store(num, '+FLAGS', '\\Deleted')
+                mail.expunge()
+
+            # --- 2. Check Inbox and Reply ---
             mail.select("INBOX")
             
             for friend in unique_friends:
