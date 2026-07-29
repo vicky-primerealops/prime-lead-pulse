@@ -18,7 +18,7 @@ jobs:
           python-version: "3.11"
 
       - name: Write warmup CSV
-        run: echo '${{ secrets.WARMUP_CSV }}' > warmup_accounts.csv
+        run: echo '${{ secrets.WARMUP_CSV }}' > Email_Warmup_Project/warmup_accounts.csv
 
       - name: Run Auto Warmup Script
-        run: python auto_warmup.py
+        run: python Email_Warmup_Project/auto_warmup.py
