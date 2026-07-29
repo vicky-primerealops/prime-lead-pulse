@@ -34,7 +34,5 @@ jobs:
           SPREADSHEET_ID:     ${{ secrets.SPREADSHEET_ID }}
           GMAIL_USER:         ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          GMAIL_USER_2:       ${{ secrets.GMAIL_USER_2 }}
-          GMAIL_APP_PASSWORD_2: ${{ secrets.GMAIL_APP_PASSWORD_2 }}
           FROM_NAME:          "Vicky Thakkar"
         run: python send_emails.py --auto

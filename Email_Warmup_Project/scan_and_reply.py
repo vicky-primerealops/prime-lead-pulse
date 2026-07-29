@@ -65,9 +65,10 @@ def main():
         server_info = get_server_info(email_addr)
         
         try:
-            log.info(f"[{email_addr}] Checking Spam and Inbox...")
+            log.info(f"[{email_addr}] Logging in...")
             mail = imaplib.IMAP4_SSL(server_info["imap"])
             mail.login(email_addr, password)
+            log.info(f"[{email_addr}] Login successful!")
             
             # --- 1. Check Spam Folder ---
             status, folders = mail.list()
@@ -85,7 +86,7 @@ def main():
                     if status == "OK" and messages[0]:
                         nums = messages[0].split()
                         if nums:
-                            log.info(f"[{email_addr}] Found {len(nums)} replies from {friend} in SPAM. Rescuing to Inbox...")
+                            log.info(f"[{email_addr}] Found {len(nums)} email(s) from {friend} in SPAM. Rescuing...")
                         for num in nums:
                             mail.copy(num, "INBOX")
                             mail.store(num, '+FLAGS', '\\Deleted')
@@ -95,10 +96,13 @@ def main():
             mail.select("INBOX")
             
             for friend in unique_friends:
-                # Search for UNREAD emails specifically from the friend
-                status, messages = mail.search(None, f'(UNSEEN FROM "{friend}")')
+                # Search for emails from friend that we have NOT yet replied to
+                # Uses UNANSWERED instead of UNSEEN so read emails are still detected
+                status, messages = mail.search(None, f'(UNANSWERED FROM "{friend}")')
                 if status == "OK" and messages[0]:
-                    for num in messages[0].split():
+                    nums = messages[0].split()
+                    log.info(f"[{email_addr}] Found {len(nums)} unanswered email(s) from {friend}")
+                    for num in nums:
                         typ, data = mail.fetch(num, '(RFC822)')
                         raw_email = data[0][1]
                         msg = email.message_from_bytes(raw_email)
@@ -121,16 +125,16 @@ def main():
                                 reply_msg["References"] = msg_id
                             
                             server.send_message(reply_msg)
-                            log.info(f"    -> Auto-replied to {friend} with a question!")
+                            log.info(f"    -> Auto-replied to {friend}!")
                             
-                        # Mark as read so we don't reply to it again
-                        mail.store(num, '+FLAGS', '\\Seen')
+                        # Mark as ANSWERED so we never reply to this email again
+                        mail.store(num, '+FLAGS', '\\Answered')
                         time.sleep(random.randint(5, 10))
                         
             mail.close()
             mail.logout()
         except Exception as e:
-            log.error(f"[{email_addr}] Error checking mail: {e}")
+            log.error(f"[{email_addr}] Error: {e}")
 
     log.info("Finished scanning all accounts.")
 
