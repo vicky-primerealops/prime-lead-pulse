@@ -139,10 +139,10 @@ def get_imap_sent_folder(imap_conn):
     return "Sent"
 
 
-def save_to_sent(msg_bytes):
+def save_to_sent(msg_bytes, user, password):
     try:
         with imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT) as imap:
-            imap.login(cfg.SMTP_USER, cfg.SMTP_PASSWORD)
+            imap.login(user, password)
             sent_folder = get_imap_sent_folder(imap)
             imap.append(
                 sent_folder,
@@ -193,7 +193,7 @@ def mark_as_sent(service, row):
     ).execute()
 
 
-def build_message(to_name, to_email):
+def build_message(to_name, to_email, from_user):
     first_name = to_name.split()[0]
     subject   = EMAIL_SUBJECT.format(name=first_name)
     body_text = EMAIL_BODY_TEXT.format(name=first_name)
@@ -211,7 +211,7 @@ def build_message(to_name, to_email):
     # ── Build final message ──────────────────────────────────────────
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"]    = f"{cfg.FROM_NAME} <{cfg.SMTP_USER}>"
+    msg["From"]    = f"{cfg.FROM_NAME} <{from_user}>"
     msg["To"]      = to_email
     msg.attach(MIMEText(body_text, "plain"))
     msg.attach(MIMEText(body_html, "html"))
@@ -219,28 +219,38 @@ def build_message(to_name, to_email):
 
 
 def send_emails(contacts, service):
-    batch = contacts[:EMAILS_PER_RUN]
+    accounts = [{"user": cfg.SMTP_USER, "pass": cfg.SMTP_PASSWORD}]
+    if getattr(cfg, "SMTP_USER_2", "") and getattr(cfg, "SMTP_PASSWORD_2", ""):
+        accounts.append({"user": cfg.SMTP_USER_2, "pass": cfg.SMTP_PASSWORD_2})
+        
+    total_to_send = EMAILS_PER_RUN * len(accounts)
+    batch = contacts[:total_to_send]
+    
+    # If multiple accounts, cut the global delay proportionally so individual delays remain equal
+    global_delay = cfg.SEND_DELAY_SECONDS // len(accounts)
+
     sent_count = 0
-    for contact in batch:
+    for i, contact in enumerate(batch):
+        account = accounts[i % len(accounts)]
         try:
-            msg = build_message(contact["name"], contact["email"])
+            msg = build_message(contact["name"], contact["email"], account["user"])
             raw_msg = msg.as_bytes(policy=email.policy.SMTP)
 
             with smtplib.SMTP_SSL(cfg.SMTP_HOST, cfg.SMTP_PORT) as server:
-                server.login(cfg.SMTP_USER, cfg.SMTP_PASSWORD)
+                server.login(account["user"], account["pass"])
                 server.send_message(msg)
 
-            save_to_sent(raw_msg)
+            save_to_sent(raw_msg, account["user"], account["pass"])
             mark_as_sent(service, contact["row"])
 
             sent_count += 1
             log.info(
-                "✓ Sent (%d/%d) → %s <%s>",
-                sent_count, len(batch), contact["name"], contact["email"],
+                "✓ Sent (%d/%d) [via %s] → %s <%s>",
+                sent_count, len(batch), account["user"], contact["name"], contact["email"],
             )
-            time.sleep(cfg.SEND_DELAY_SECONDS)
+            time.sleep(global_delay)
         except Exception as e:
-            log.error("✗ Failed → %s <%s>: %s", contact["name"], contact["email"], e)
+            log.error("✗ Failed [via %s] → %s <%s>: %s", account["user"], contact["name"], contact["email"], e)
 
     log.info("─── Done. %d email(s) sent this run. ───", sent_count)
 
