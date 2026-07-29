@@ -21,4 +21,6 @@ jobs:
         run: echo '${{ secrets.WARMUP_CSV }}' > Email_Warmup_Project/warmup_accounts.csv
 
       - name: Run Auto Warmup Script
-        run: python Email_Warmup_Project/auto_warmup.py
+        run: |
+          cd Email_Warmup_Project
+          python auto_warmup.py
