@@ -140,8 +140,14 @@ def get_imap_sent_folder(imap_conn):
 
 
 def save_to_sent(msg_bytes, user, password):
+    # Gmail SMTP automatically saves sent emails, so we don't need to do it manually.
+    # Doing it manually for Gmail actually creates duplicate emails in the Sent folder.
+    if "@gmail.com" in user.lower() or "@diyflatfee.com" in user.lower():
+        return
+        
     try:
-        with imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT) as imap:
+        # If it's a GoDaddy account, we DO need to manually save it
+        with imaplib.IMAP4_SSL("imap.secureserver.net", 993) as imap:
             imap.login(user, password)
             sent_folder = get_imap_sent_folder(imap)
             imap.append(
