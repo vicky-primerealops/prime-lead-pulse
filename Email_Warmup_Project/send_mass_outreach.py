@@ -83,12 +83,21 @@ def get_html_signature(name, is_founder):
   </table>
 """
     else:
-        # Full name mapping (User can fill in the real last names here)
+        # Full name mapping
         full_names = {
-            "Nisha": "Nisha Desai",
-            "Samantha": "Samantha Desai" # Example
+            "Shiva": "Shiva Nath",
+            "Tyler": "Tyler Durden",
+            "Taarak": "Taarak Vakil",
+            "Tony": "Tony Rydinger",
+            "Michael": "Michael Ross",
+            "Kisha": "Kisha Brown",
+            "Victor": "Victor Wiseman",
+            "Aisha": "Aisha Patel",
+            "Dan": "Dan Kenton",
+            "Samantha": "Samantha Wheeler",
+            "Nisha": "Nisha Desai"
         }
-        full_name = full_names.get(name, f"{name} Thakkar") # Default to Thakkar if not listed
+        full_name = full_names.get(name, f"{name} Thakkar") # Default fallback
         
         return f"""
   <div style="font-family: Arial, Helvetica, sans-serif;">
