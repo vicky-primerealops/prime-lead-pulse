@@ -347,12 +347,18 @@ def send_mass_outreach():
             
             log.info(f"✓ Sent ({i+1}/{len(queue)}) [via {account['email']}] -> {contact['name']} <{contact['email']}>")
             
-            # Wait 30 seconds before next send, unless it's the last email
+            # Wait between EVERY email sent
             if i < len(queue) - 1:
-                time.sleep(30)
+                unique_remaining = len(set(a["email"] for a in queue[i:]))
+                delay = 60 if unique_remaining <= 2 else 30
+                log.info(f"Waiting {delay} seconds before next email (Active accounts remaining: {unique_remaining})...")
+                time.sleep(delay)
                 
         except Exception as e:
             log.error(f"Failed to send to {contact['email']} via {account['email']}: {e}")
+
+    log.info("\nMass outreach complete.")
+    log.info(f"Total emails sent: {len(queue)}")
 
 if __name__ == "__main__":
     send_mass_outreach()
