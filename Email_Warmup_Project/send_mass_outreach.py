@@ -117,7 +117,7 @@ def get_email_body_html(to_name, sender_name, is_founder):
 <body style="margin: 0; padding: 0;">
 
   <div class="body-text">
-    <p style="margin-bottom: 20px;"><strong>Hi {{to_name}},</strong></p>
+    <p style="margin-bottom: 20px;"><strong>Hi {to_name},</strong></p>
 
     <p style="margin-bottom: 20px;">Your highest value as a broker is closing deals and scaling your team, not getting bogged down by backend administration and paperwork.</p>
 
@@ -142,7 +142,7 @@ def get_email_body_html(to_name, sender_name, is_founder):
 
 </body>
 </html>
-""".format(to_name=to_name)
+"""
 
 def get_imap_sent_folder(imap_conn):
     _, folder_list = imap_conn.list()

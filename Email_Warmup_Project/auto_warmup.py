@@ -214,7 +214,7 @@ def send_new_emails(account, all_emails):
     sender_pass = account["password"]
     server_info = get_server_info(sender_email)
     
-    num_to_send = random.randint(4, 7)
+    num_to_send = random.randint(8, 13)
     possible_receivers = [e for e in all_emails if e != sender_email]
     num_to_send = min(num_to_send, len(possible_receivers))
     receivers = random.sample(possible_receivers, num_to_send)

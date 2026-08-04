@@ -26,7 +26,7 @@ FRIENDS_EMAILS = [
     "deepa.thakkar@here.com"
 ]
 
-SUBJECT = "Quick favor regarding my new email! / Catching up"
+SUBJECT = "Just following up! / Checking in"
 
 def get_body(friend_email):
     # Try to extract a first name for a personal touch, or default to a generic greeting
@@ -37,13 +37,13 @@ def get_body(friend_email):
         
     return f"""Hi {name},
 
-I hope you're having a great week!
+Hope everything has been going well since we last spoke!
 
-I am currently setting up the new email infrastructure for my business, and I'm running a few deliverability tests today. Could you do me a huge favor and reply to this email with a quick "received" or let me know how things are going on your end? Let's exchange a few emails, as it would help a lot.
+I am doing a follow-up test on my new email setup to make sure my responses are getting through properly and not landing in spam.
 
-Also, if this message landed in your junk or spam folder, it would be incredibly helpful if you could mark it as "Not Spam" or move it to your primary inbox.
+Could you drop a quick reply letting me know what you've been up to lately, or any fun plans you have for the upcoming weekend? Having a quick back-and-forth conversation helps a ton with my email score.
 
-Thanks so much for the help!
+Thanks again for all the help!
 
 Best Regards,"""
 
