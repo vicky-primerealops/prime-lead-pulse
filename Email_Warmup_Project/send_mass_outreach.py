@@ -83,17 +83,23 @@ def get_html_signature(name, is_founder):
   </table>
 """
     else:
+        # Full name mapping (User can fill in the real last names here)
+        full_names = {
+            "Nisha": "Nisha Desai",
+            "Samantha": "Samantha Desai" # Example
+        }
+        full_name = full_names.get(name, f"{name} Thakkar") # Default to Thakkar if not listed
+        
         return f"""
   <div style="font-family: Arial, Helvetica, sans-serif;">
-    <p style="margin: 0 0 10px 0;">
-      <a href="{calendly_link}" style="font-weight: bold; color: #0056b3; text-decoration: underline; font-size: 13px;">Book A Call</a>
-    </p>
-    <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">{name}</p>
-    <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Operations | PrimeRealOps.com</strong></p>
+    <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">{full_name}</p>
+    <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Operations | <a href="https://primerealops.com" style="color: #000000; text-decoration: none;">PrimeRealOps.com</a></strong></p>
     <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
     <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
-    <p style="margin: 0 0 10px 0;">
-      <a href="https://wa.me/16786789750" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="18" height="18" alt="WhatsApp"></a>
+    <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold;">
+      <a href="{calendly_link}" style="color: #0056b3; text-decoration: underline;">Book A Call</a> 
+      <span style="color: #333333; margin: 0 5px;">|</span> 
+      <a href="https://wa.me/16786789750" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="16" height="16" alt="WhatsApp" style="vertical-align: middle; margin-bottom: 2px;"> WhatsApp</a>
     </p>
     <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
       "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
