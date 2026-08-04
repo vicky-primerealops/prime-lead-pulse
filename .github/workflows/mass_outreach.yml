@@ -1,0 +1,36 @@
+name: Send Mass Outreach (All Accounts)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  send-mass-outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # This can run for a couple of hours due to deliberate slow delays
+    defaults:
+      run:
+        working-directory: Email_Warmup_Project
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write service_account.json
+        run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
+
+      - name: Create config.py from cloud template
+        # We still need config.py to read the SPREADSHEET_ID 
+        run: cp cloud_config.py config.py
+
+      - name: Run Mass Email Sender
+        env:
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        run: python send_mass_outreach.py
