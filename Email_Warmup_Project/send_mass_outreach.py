@@ -14,7 +14,8 @@ from email.mime.text import MIMEText
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-import config as cfg
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "1zJq23fB-c15hH8N8x7_f02M_k-3VdD6y2_F8XWn6xYI")
+SERVICE_ACCOUNT_FILE = "service_account.json"
 
 # ── Logging Setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -180,13 +181,13 @@ def save_to_sent(msg_bytes, user, password):
 def get_contacts_from_sheet():
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = service_account.Credentials.from_service_account_file(
-        cfg.SERVICE_ACCOUNT_FILE, scopes=scopes
+        SERVICE_ACCOUNT_FILE, scopes=scopes
     )
     service = build("sheets", "v4", credentials=creds)
     result = (
         service.spreadsheets()
         .values()
-        .get(spreadsheetId=cfg.SPREADSHEET_ID, range="Sheet1!A2:C")
+        .get(spreadsheetId=SPREADSHEET_ID, range="Sheet1!A2:C")
         .execute()
     )
     rows = result.get("values", [])
@@ -206,7 +207,7 @@ def get_contacts_from_sheet():
 def mark_as_sent(service, row):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     service.spreadsheets().values().update(
-        spreadsheetId=cfg.SPREADSHEET_ID,
+        spreadsheetId=SPREADSHEET_ID,
         range=f"Sheet1!C{row}",
         valueInputOption="RAW",
         body={"values": [[timestamp]]},
