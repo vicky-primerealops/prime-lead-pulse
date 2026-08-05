@@ -272,8 +272,8 @@ def load_accounts():
             if not email or not password:
                 continue
                 
-            # Rule 1: No emails from vickythakkar6143
-            if "vickythakkar6143" in email.lower():
+            # Rule 1: No cold emails from vickythakkar6143 or diyflatfee
+            if "vickythakkar6143" in email.lower() or "diyflatfee" in email.lower():
                 continue
                 
             # Determine properties
