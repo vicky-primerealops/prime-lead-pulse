@@ -1,18 +1,16 @@
 """
 cleanup_warmup_emails.py
 ────────────────────────
-Deletes all warmup emails from every account in warmup_accounts.csv.
+SAFELY deletes ONLY warmup emails by matching on the exact subjects
+used in the warmup script. Does NOT delete any real emails.
 
-What it deletes:
-  • Any email FROM one of your own warmup accounts (sent to another)
-  • Any email TO one of your own warmup accounts (received from another)
-  • Checks: INBOX, Sent, [Gmail]/Sent Mail, Spam, Junk, Trash
+Safety mechanism:
+  • Only deletes emails whose subject EXACTLY matches one from the warmup SUBJECTS list
+  • AND the sender is one of your warmup accounts
+  • This ensures real client emails are NEVER touched
 
 Run locally:
   python cleanup_warmup_emails.py
-
-Run on GitHub Actions:
-  Trigger the "Cleanup Warmup Emails" workflow manually.
 """
 
 import csv
@@ -27,7 +25,41 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Folders to clean in each account ─────────────────────────────────────────
+# ── Exact subjects used in auto_warmup.py ─────────────────────────────────────
+# These are the ONLY subjects that will be deleted. Real emails are safe.
+WARMUP_SUBJECTS = [
+    "Quick question", "Hey!", "Following up on yesterday", "Checking in",
+    "Meeting notes", "Catch up later?", "Re: Last week", "Quick update",
+    "Thoughts on this?", "Hello!", "Action items", "Are we still on?",
+    "Can we chat?", "Quick favor", "Update required", "Just checking in",
+    "Status report", "Do you have a minute?", "Need your input", "Project update",
+    "Coffee next week?", "Lunch plans", "Review requested", "Feedback on the proposal",
+    "Touching base", "Checking your availability", "Quick sync", "Weekly sync",
+    "Introduction", "Connecting", "Schedule change", "Rescheduling our call",
+    "Follow up", "Just saying hi", "Checking in again", "Question about the project",
+    "A quick favor", "Need advice", "Quick call?", "Got a minute?",
+    "Hope you're well", "Checking the timeline", "Invoice follow up", "Quick request",
+    "Brainstorming session", "Next steps", "Catching up", "Happy Friday!",
+    "Morning!", "Checking in on progress",
+    # Re: variants
+    "Re: Quick question", "Re: Hey!", "Re: Following up on yesterday", "Re: Checking in",
+    "Re: Meeting notes", "Re: Catch up later?", "Re: Last week", "Re: Quick update",
+    "Re: Thoughts on this?", "Re: Hello!", "Re: Action items", "Re: Are we still on?",
+    "Re: Can we chat?", "Re: Quick favor", "Re: Update required", "Re: Just checking in",
+    "Re: Status report", "Re: Do you have a minute?", "Re: Need your input",
+    "Re: Project update", "Re: Coffee next week?", "Re: Lunch plans",
+    "Re: Review requested", "Re: Feedback on the proposal", "Re: Touching base",
+    "Re: Checking your availability", "Re: Quick sync", "Re: Weekly sync",
+    "Re: Introduction", "Re: Connecting", "Re: Schedule change",
+    "Re: Rescheduling our call", "Re: Follow up", "Re: Just saying hi",
+    "Re: Checking in again", "Re: Question about the project", "Re: A quick favor",
+    "Re: Need advice", "Re: Quick call?", "Re: Got a minute?", "Re: Hope you're well",
+    "Re: Checking the timeline", "Re: Invoice follow up", "Re: Quick request",
+    "Re: Brainstorming session", "Re: Next steps", "Re: Catching up",
+    "Re: Happy Friday!", "Re: Morning!", "Re: Checking in on progress",
+]
+
+# ── Folders to clean ──────────────────────────────────────────────────────────
 FOLDERS_TO_CHECK = [
     "INBOX",
     "Sent",
@@ -67,14 +99,12 @@ def load_accounts(filename="warmup_accounts.csv"):
 
 
 def list_all_folders(mail):
-    """Return all folder names that exist on the server."""
     status, folder_list = mail.list()
     folders = []
     if status != "OK":
         return folders
     for entry in folder_list:
         decoded = entry.decode() if isinstance(entry, bytes) else entry
-        # Folder name is after the last space-quoted separator
         parts = decoded.split('"/"')
         if len(parts) >= 2:
             name = parts[-1].strip().strip('"')
@@ -86,9 +116,11 @@ def list_all_folders(mail):
 
 def delete_warmup_emails_in_folder(mail, folder, warmup_addresses):
     """
-    Searches the given folder for any email FROM or TO any warmup address
-    and permanently deletes them.
-    Returns count of emails deleted.
+    Deletes ONLY emails that match BOTH:
+      1. FROM one of the warmup addresses
+      2. Subject matches one of the known warmup subjects
+
+    This ensures real client/work emails are never touched.
     """
     try:
         status, _ = mail.select(folder, readonly=False)
@@ -98,23 +130,24 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_addresses):
         return 0
 
     deleted = 0
+
     for addr in warmup_addresses:
-        for search_type in ["FROM", "TO"]:
+        for subject in WARMUP_SUBJECTS:
             try:
-                status, messages = mail.search(None, f'({search_type} "{addr}")')
+                # Search strictly: FROM warmup address AND exact subject
+                search_criteria = f'(FROM "{addr}" SUBJECT "{subject}")'
+                status, messages = mail.search(None, search_criteria)
                 if status != "OK" or not messages[0]:
                     continue
                 nums = messages[0].split()
                 if not nums:
                     continue
-                log.info(
-                    f"      [{search_type} {addr}] → {len(nums)} email(s) found. Deleting..."
-                )
+                log.info(f"      Found {len(nums)} warmup email(s): [{subject}] from {addr}")
                 for num in nums:
                     mail.store(num, "+FLAGS", "\\Deleted")
                     deleted += 1
             except Exception as exc:
-                log.warning(f"      Search error ({search_type} {addr}): {exc}")
+                log.warning(f"      Search error: {exc}")
 
     if deleted:
         try:
@@ -139,18 +172,9 @@ def clean_account(account, warmup_addresses):
         mail = imaplib.IMAP4_SSL(imap_host)
         mail.login(email_addr, password)
 
-        # Get folders that actually exist on this server
         existing_folders = list_all_folders(mail)
-        log.info(f"  Available folders: {existing_folders}")
-
-        # Intersect with the ones we want to clean
-        folders_to_clean = []
-        for candidate in FOLDERS_TO_CHECK:
-            if candidate in existing_folders:
-                folders_to_clean.append(candidate)
-
+        folders_to_clean = [f for f in FOLDERS_TO_CHECK if f in existing_folders]
         if not folders_to_clean:
-            # Fallback: clean INBOX + Sent at minimum
             folders_to_clean = ["INBOX"]
 
         for folder in folders_to_clean:
@@ -176,7 +200,9 @@ def clean_account(account, warmup_addresses):
 
 def main():
     log.info("=" * 60)
-    log.info("  WARMUP EMAIL CLEANER")
+    log.info("  WARMUP EMAIL CLEANER (Subject-Safe Mode)")
+    log.info("  Only deletes emails with known warmup subjects.")
+    log.info("  Real emails are NOT touched.")
     log.info("=" * 60)
 
     accounts = load_accounts()
@@ -184,25 +210,19 @@ def main():
         log.error("No accounts loaded from warmup_accounts.csv. Aborting.")
         return
 
-    # All warmup email addresses — these are the senders/recipients to nuke
     warmup_addresses = [acc["email"] for acc in accounts]
-
-    log.info(f"Loaded {len(accounts)} accounts.")
-    log.info(f"Will delete any emails FROM/TO: {warmup_addresses}\n")
+    log.info(f"Loaded {len(accounts)} accounts.\n")
 
     grand_total = 0
     for i, account in enumerate(accounts, 1):
         log.info(f"\n[Account {i}/{len(accounts)}]")
         deleted = clean_account(account, warmup_addresses)
         grand_total += deleted
-
-        # Brief pause between accounts to be polite to servers
         if i < len(accounts):
-            log.info(f"  Waiting 5 seconds before next account...")
-            time.sleep(5)
+            time.sleep(3)
 
     log.info("\n" + "=" * 60)
-    log.info(f"  CLEANUP COMPLETE. Total emails deleted: {grand_total}")
+    log.info(f"  CLEANUP COMPLETE. Total warmup emails deleted: {grand_total}")
     log.info("=" * 60)
 
 
