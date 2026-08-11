@@ -282,7 +282,7 @@ def load_accounts():
                 is_founder = True
                 name = "Vicky Thakkar"
             else:
-                count = random.randint(7, 10)
+                count = random.randint(12, 15)
                 is_founder = False
                 name = email.split('.')[0].capitalize()
                 

@@ -169,7 +169,7 @@ def process_inbox_and_spam(account, all_emails):
             if status == "OK" and messages[0]:
                 nums = messages[0].split()
                 for num in nums:
-                    if replies_sent < 3: # Limit replies per account per run to avoid spamming
+                    if replies_sent < 5: # Limit replies per account per run to avoid spamming
                         typ, data = mail.fetch(num, '(RFC822)')
                         raw_email = data[0][1]
                         msg = email.message_from_bytes(raw_email)
@@ -214,7 +214,7 @@ def send_new_emails(account, all_emails):
     sender_pass = account["password"]
     server_info = get_server_info(sender_email)
     
-    num_to_send = random.randint(8, 13)
+    num_to_send = random.randint(12, 18)
     possible_receivers = [e for e in all_emails if e != sender_email]
     num_to_send = min(num_to_send, len(possible_receivers))
     receivers = random.sample(possible_receivers, num_to_send)
