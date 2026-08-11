@@ -350,7 +350,7 @@ def send_mass_outreach():
             # Wait between EVERY email sent
             if i < len(queue) - 1:
                 unique_remaining = len(set(a["email"] for a in queue[i:]))
-                delay = 60 if unique_remaining <= 2 else 30
+                delay = 75 if unique_remaining <= 2 else 40
                 log.info(f"Waiting {delay} seconds before next email (Active accounts remaining: {unique_remaining})...")
                 time.sleep(delay)
                 
