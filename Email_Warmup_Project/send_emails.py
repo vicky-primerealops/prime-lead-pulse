@@ -55,7 +55,7 @@ Best Regards,
 
 Vicky Thakkar
 Founder | PrimeRealOps
-+91 88052 92130, +1(678) 678-9750
++91 88052 92130, +1 (929) 833-8166
 Mumbai, India
 
 "Jack of all trades, master of none,
@@ -106,12 +106,12 @@ EMAIL_BODY_HTML = """\
       <td style="vertical-align: top; padding-left: 15px;">
         <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">Vicky Thakkar</p>
         <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Founder | PrimeRealOps</strong></p>
-        <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1 (929) 833-8166</p>
         <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
         <p style="margin: 0 0 10px 0;">
           <a href="https://instagram.com/v.p.thakkar" style="text-decoration: none; margin-right: 6px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" width="18" height="18" alt="Instagram"></a>
           <a href="https://www.linkedin.com/in/vickythegeneralist/" style="text-decoration: none; margin-right: 6px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="18" height="18" alt="LinkedIn"></a>
-          <a href="https://wa.me/16786789750" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="18" height="18" alt="WhatsApp"></a>
+          <a href="https://wa.me/19298338166" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="18" height="18" alt="WhatsApp"></a>
         </p>
         <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
           "Jack of all trades, master of none,<br>But oftentimes better than a master of one."

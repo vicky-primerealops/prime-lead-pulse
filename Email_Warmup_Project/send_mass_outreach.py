@@ -68,12 +68,12 @@ def get_html_signature(name, is_founder):
       <td style="vertical-align: top; padding-left: 15px;">
         <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">Vicky Thakkar</p>
         <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Founder | PrimeRealOps</strong></p>
-        <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1 (929) 833-8166</p>
         <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
         <p style="margin: 0 0 10px 0;">
           <a href="https://instagram.com/v.p.thakkar" style="text-decoration: none; margin-right: 6px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" width="18" height="18" alt="Instagram"></a>
           <a href="https://www.linkedin.com/in/vickythegeneralist/" style="text-decoration: none; margin-right: 6px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="18" height="18" alt="LinkedIn"></a>
-          <a href="https://wa.me/16786789750" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="18" height="18" alt="WhatsApp"></a>
+          <a href="https://wa.me/19298338166" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="18" height="18" alt="WhatsApp"></a>
         </p>
         <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
           "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
@@ -103,12 +103,12 @@ def get_html_signature(name, is_founder):
   <div style="font-family: Arial, Helvetica, sans-serif;">
     <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">{full_name}</p>
     <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Operations | <a href="https://primerealops.com" style="color: #000000; text-decoration: none;">PrimeRealOps.com</a></strong></p>
-    <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1(678) 678-9750</p>
+    <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1 (929) 833-8166</p>
     <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
     <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold;">
       <a href="{calendly_link}" style="color: #0056b3; text-decoration: underline;">Book A Call</a> 
       <span style="color: #333333; margin: 0 5px;">|</span> 
-      <a href="https://wa.me/16786789750" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="16" height="16" alt="WhatsApp" style="vertical-align: middle; margin-bottom: 2px;"> WhatsApp</a>
+      <a href="https://wa.me/19298338166" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="16" height="16" alt="WhatsApp" style="vertical-align: middle; margin-bottom: 2px;"> WhatsApp</a>
     </p>
     <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
       "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
