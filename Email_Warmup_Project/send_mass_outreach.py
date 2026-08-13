@@ -272,8 +272,8 @@ def load_accounts():
             if not email or not password:
                 continue
                 
-            # Rule 1: No cold emails from vickythakkar6143, diyflatfee
-            if any(x in email.lower() for x in ["vickythakkar6143", "diyflatfee"]):
+            # Rule 1: No cold emails from vickythakkar6143, diyflatfee, Michael, or Shiva
+            if any(x in email.lower() for x in ["vickythakkar6143", "diyflatfee", "michael.primerealops", "shiva.primerealops"]):
                 continue
                 
             # Determine properties
@@ -281,7 +281,7 @@ def load_accounts():
                 count = 30
                 is_founder = True
                 name = "Vicky Thakkar"
-            elif any(x in email.lower() for x in ["kisha.primerealops", "shiva.primerealops", "michael.primerealops", "michael.primerealops.com"]):
+            elif any(x in email.lower() for x in ["kisha.primerealops"]):
                 count = random.randint(4, 7)
                 is_founder = False
                 name = email.split('.')[0].capitalize()
