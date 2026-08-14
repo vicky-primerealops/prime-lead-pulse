@@ -14,7 +14,7 @@ from email.mime.text import MIMEText
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "1zJq23fB-c15hH8N8x7_f02M_k-3VdD6y2_F8XWn6xYI")
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "1GAecP1KrbM_ehj8RjUN9cuEpk0lB7l-1-t_TikAShOs")
 SERVICE_ACCOUNT_FILE = "service_account.json"
 
 # ── Logging Setup ─────────────────────────────────────────────────────────────
