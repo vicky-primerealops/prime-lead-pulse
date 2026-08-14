@@ -159,9 +159,11 @@ def process_inbox_and_spam(account, all_emails):
                         mail.store(num, '+FLAGS', '\\Deleted')
             mail.expunge()
         
-        # 2. CHECK INBOX FOR UNREAD WARMUP EMAILS & REPLY
+        # 2. Reply to unread warmup emails
         mail.select("INBOX")
         replies_sent = 0
+        max_replies = random.randint(8, 10)
+        
         for sender in all_emails:
             if sender == email_addr: continue
             # Strictly only reply to UNSEEN emails from other accounts in our CSV
@@ -169,7 +171,7 @@ def process_inbox_and_spam(account, all_emails):
             if status == "OK" and messages[0]:
                 nums = messages[0].split()
                 for num in nums:
-                    if replies_sent < 5: # Limit replies per account per run to avoid spamming
+                    if replies_sent < max_replies: # Limit replies per account per run to avoid spamming
                         typ, data = mail.fetch(num, '(RFC822)')
                         raw_email = data[0][1]
                         msg = email.message_from_bytes(raw_email)
