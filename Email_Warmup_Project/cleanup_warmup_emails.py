@@ -20,6 +20,7 @@ import email as emaillib
 import imaplib
 import logging
 import time
+import random
 
 logging.basicConfig(
     level=logging.INFO,
@@ -232,7 +233,9 @@ def main():
         deleted = clean_account(account, warmup_set)
         grand_total += deleted
         if i < len(accounts):
-            time.sleep(3)
+            delay = random.randint(15, 30)
+            log.info(f"Sleeping for {delay} seconds before next account to prevent login limits...")
+            time.sleep(delay)
 
     log.info("\n" + "=" * 60)
     log.info(f"  CLEANUP COMPLETE. Total warmup emails deleted: {grand_total}")

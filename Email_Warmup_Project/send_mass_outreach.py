@@ -286,7 +286,7 @@ def load_accounts():
                 is_founder = False
                 name = email.split('.')[0].capitalize()
             else:
-                count = random.randint(12, 15)
+                count = random.randint(7, 10)
                 is_founder = False
                 name = email.split('.')[0].capitalize()
                 
