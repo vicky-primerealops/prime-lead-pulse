@@ -43,6 +43,10 @@ FOLDERS_TO_CHECK = [
     "INBOX.Sent",
     "INBOX.Trash",
     "INBOX.Junk",
+    "[Gmail]/Important",
+    "Important",
+    "[Gmail]/All Mail",
+    "All Mail"
 ]
 
 
