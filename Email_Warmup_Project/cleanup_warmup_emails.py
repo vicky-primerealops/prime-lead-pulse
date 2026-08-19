@@ -151,6 +151,19 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_set):
                     recipients_are_warmup = all(a in warmup_set for a in all_recipients) and len(all_recipients) > 0
 
                     if from_is_warmup and recipients_are_warmup:
+                        # Move to trash in Gmail using X-GM-LABELS if supported
+                        try:
+                            mail.store(num, '+X-GM-LABELS', '\\Trash')
+                        except Exception:
+                            pass
+                        
+                        # Fallback for standard IMAP (GoDaddy)
+                        try:
+                            mail.copy(num, 'Trash')
+                        except Exception:
+                            pass
+                        
+                        # Finally set the Deleted flag
                         mail.store(num, "+FLAGS", "\\Deleted")
                         deleted += 1
                         log.info(f"      ✓ Deleting: {from_addrs} → {all_recipients}")
