@@ -111,7 +111,7 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_set):
     Only then delete it.
     """
     try:
-        status, _ = mail.select(folder, readonly=False)
+        status, _ = mail.select(f'"{folder}"', readonly=False)
         if status != "OK":
             return 0
     except Exception:
@@ -169,7 +169,9 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_set):
                         log.info(f"      ✓ Deleting: {from_addrs} → {all_recipients}")
                     else:
                         # At least one outsider involved — skip safely
-                        log.debug(f"      ⏭ Skipping (outsider involved): {from_addrs} → {all_recipients}")
+                        if "vicky@diyflatfee.com" in from_addrs:
+                            log.info(f"      ⏭ Skipping: {from_addrs} → {all_recipients}")
+
 
                 except Exception as exc:
                     log.warning(f"      Error processing message {num}: {exc}")
