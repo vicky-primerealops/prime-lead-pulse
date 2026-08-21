@@ -129,52 +129,61 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_set):
             if not nums:
                 continue
 
-            for num in nums:
+            # Bulk process emails in chunks of 500 for massive speedup
+            chunk_size = 500
+            for i in range(0, len(nums), chunk_size):
+                chunk = nums[i:i + chunk_size]
+                chunk_str = b','.join(chunk)
+                to_delete = []
+                
                 try:
-                    # Fetch only the headers to check TO/CC
-                    typ, data = mail.fetch(num, "(BODY[HEADER.FIELDS (FROM TO CC)])")
-                    if typ != "OK" or not data or not data[0]:
+                    typ, data = mail.fetch(chunk_str, "(BODY[HEADER.FIELDS (FROM TO CC)])")
+                    if typ != "OK" or not data:
                         continue
-
-                    raw_headers = data[0][1]
-                    msg = emaillib.message_from_bytes(raw_headers)
-
-                    from_addrs = extract_addresses(msg.get("From", ""))
-                    to_addrs   = extract_addresses(msg.get("To", ""))
-                    cc_addrs   = extract_addresses(msg.get("Cc", ""))
-                    all_recipients = to_addrs + cc_addrs
-
-                    # ── STRICT SAFETY CHECK ───────────────────────────────
-                    # From must be a warmup address
-                    from_is_warmup = all(a in warmup_set for a in from_addrs) and len(from_addrs) > 0
-                    # ALL recipients must also be warmup addresses
-                    recipients_are_warmup = all(a in warmup_set for a in all_recipients) and len(all_recipients) > 0
-
-                    if from_is_warmup and recipients_are_warmup:
-                        # Move to trash in Gmail using X-GM-LABELS if supported
+                        
+                    for item in data:
+                        if isinstance(item, tuple):
+                            try:
+                                header_info = item[0].decode(errors="ignore")
+                                msg_num_str = header_info.split()[0]
+                                num = msg_num_str.encode()
+                                
+                                raw_headers = item[1]
+                                msg = emaillib.message_from_bytes(raw_headers)
+                                
+                                from_addrs = extract_addresses(msg.get("From", ""))
+                                to_addrs   = extract_addresses(msg.get("To", ""))
+                                cc_addrs   = extract_addresses(msg.get("Cc", ""))
+                                all_recipients = to_addrs + cc_addrs
+                                
+                                from_is_warmup = all(a in warmup_set for a in from_addrs) and len(from_addrs) > 0
+                                recipients_are_warmup = all(a in warmup_set for a in all_recipients) and len(all_recipients) > 0
+                                
+                                if from_is_warmup and recipients_are_warmup:
+                                    to_delete.append(num)
+                                    log.info(f"      ✓ Marked for deletion: {from_addrs} → {all_recipients}")
+                                else:
+                                    if "vicky@diyflatfee.com" in from_addrs:
+                                        log.info(f"      ⏭ Skipping: {from_addrs} → {all_recipients}")
+                            except Exception as e:
+                                log.warning(f"      Error parsing headers: {e}")
+                                
+                    if to_delete:
+                        delete_str = b','.join(to_delete)
                         try:
-                            mail.store(num, '+X-GM-LABELS', '\\Trash')
+                            mail.store(delete_str, '+X-GM-LABELS', '\\Trash')
                         except Exception:
                             pass
-                        
-                        # Fallback for standard IMAP (GoDaddy)
                         try:
-                            mail.copy(num, 'Trash')
+                            mail.copy(delete_str, 'Trash')
                         except Exception:
                             pass
+                            
+                        mail.store(delete_str, "+FLAGS", "\\Deleted")
+                        deleted += len(to_delete)
                         
-                        # Finally set the Deleted flag
-                        mail.store(num, "+FLAGS", "\\Deleted")
-                        deleted += 1
-                        log.info(f"      ✓ Deleting: {from_addrs} → {all_recipients}")
-                    else:
-                        # At least one outsider involved — skip safely
-                        if "vicky@diyflatfee.com" in from_addrs:
-                            log.info(f"      ⏭ Skipping: {from_addrs} → {all_recipients}")
-
-
                 except Exception as exc:
-                    log.warning(f"      Error processing message {num}: {exc}")
+                    log.warning(f"      Error processing chunk: {exc}")
 
         except Exception as exc:
             log.warning(f"      Search error for {addr}: {exc}")
