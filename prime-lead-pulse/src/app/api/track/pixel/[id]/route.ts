@@ -16,13 +16,24 @@ export async function GET(
   const ipAddress = request.headers.get('x-forwarded-for') || 'Unknown';
 
   try {
-    // Log the open event in Supabase
-    await supabase.from('tracking_events').insert({
-      email_id: emailId,
-      event_type: 'open',
-      ip_address: ipAddress,
-      user_agent: userAgent,
-    });
+    // Debounce: prevent duplicate opens within 60 seconds
+    const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+    const { data: recentOpens } = await supabase
+      .from('tracking_events')
+      .select('id')
+      .eq('email_id', emailId)
+      .eq('event_type', 'open')
+      .gte('created_at', sixtySecondsAgo)
+      .limit(1);
+
+    if (!recentOpens || recentOpens.length === 0) {
+      await supabase.from('tracking_events').insert({
+        email_id: emailId,
+        event_type: 'open',
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      });
+    }
   } catch (error) {
     console.error('Error logging pixel open:', error);
     // Even if it fails, we still want to return the pixel so the email doesn't break

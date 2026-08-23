@@ -20,7 +20,7 @@ export default function ActivityModal({ email, onClose }: { email: ProcessedEmai
         <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-gray-900">Activity Timeline</h2>
-            <p className="text-sm text-gray-400 mt-0.5">{email.recipient}</p>
+            <p className="text-sm text-gray-400 mt-0.5">{email.recipient || 'Unknown Recipient'}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 mt-0.5">
             <X size={18} />

@@ -377,9 +377,18 @@ document.addEventListener('click', async (e) => {
   btn.style.pointerEvents = 'none';
 
   const senderEmail = getActiveSenderEmail() || 'unknown';
-  const emailChips = compose.querySelectorAll('div[email]');
-  const recipient = Array.from(emailChips).map(c => c.getAttribute('email')).join(', ') ||
-    (compose.querySelector('input[name="to"]')?.value ?? '');
+  // Find recipient chips in Gmail's new DOM structure
+  const chipElements = Array.from(compose.querySelectorAll('[data-hovercard-id]'));
+  let recipient = chipElements.map(el => el.getAttribute('data-hovercard-id')).filter(Boolean).join(', ');
+  
+  // Fallbacks for older Gmail DOMs or plain inputs
+  if (!recipient) {
+    const legacyChips = Array.from(compose.querySelectorAll('div[email]'));
+    recipient = legacyChips.map(c => c.getAttribute('email')).join(', ');
+  }
+  if (!recipient) {
+    recipient = compose.querySelector('input[name="to"]')?.value || 'Unknown Recipient';
+  }
   const subject = compose.querySelector('input[name="subjectbox"]')?.value ?? 'No Subject';
 
   chrome.runtime.sendMessage({
