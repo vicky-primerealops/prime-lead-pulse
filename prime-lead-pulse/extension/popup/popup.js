@@ -37,7 +37,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
+      let data;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Server returned non-JSON. Status: ${res.status}. Body: ${text.substring(0, 50)}`);
+      }
+
       if (res.ok && data.success) {
         await chrome.storage.local.set({
           session: data.session,
@@ -45,10 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         showLoggedIn();
       } else {
-        errorMsg.textContent = data.error || 'Login failed';
+        errorMsg.textContent = data.error || `Login failed (Status: ${res.status})`;
       }
     } catch (err) {
-      errorMsg.textContent = 'Failed to connect to API.';
+      console.error(err);
+      errorMsg.textContent = 'API Error: ' + err.message;
     } finally {
       loginBtn.disabled = false;
       loginBtn.textContent = 'Log In';
