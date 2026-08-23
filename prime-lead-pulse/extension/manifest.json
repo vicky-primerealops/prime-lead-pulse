@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Prime Lead Pulse",
+  "version": "1.0.0",
+  "description": "Track email opens and clicks directly inside Gmail.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://mail.google.com/*",
+    "*://*.supabase.co/*",
+    "*://localhost/*"
+  ],
+  "action": {
+    "default_popup": "popup/index.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://mail.google.com/*"],
+      "js": ["scripts/content.js"],
+      "css": ["scripts/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
