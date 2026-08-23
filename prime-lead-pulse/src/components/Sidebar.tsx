@@ -9,9 +9,9 @@ import { twMerge } from 'tailwind-merge';
 const NAV_ITEMS = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Tracked Emails', href: '/dashboard/emails', icon: Mail },
-  { label: 'Send Calendar', href: '#', icon: Calendar },
-  { label: 'Email Templates', href: '#', icon: LayoutTemplate },
-  { label: 'Settings', href: '#', icon: Settings },
+  { label: 'Send Calendar', href: '/dashboard/calendar', icon: Calendar },
+  { label: 'Email Templates', href: '/dashboard/templates', icon: LayoutTemplate },
+  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 export default function Sidebar() {

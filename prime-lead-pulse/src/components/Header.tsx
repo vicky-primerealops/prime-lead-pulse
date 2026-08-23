@@ -8,9 +8,7 @@ export default function Header({ userEmail, onLogout }: { userEmail: string, onL
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 relative shadow-sm">
       <div className="flex items-center gap-2">
-        <div className="bg-slate-900 text-white p-1.5 rounded-md">
-          <Mailbox size={20} className="stroke-[2.5]" />
-        </div>
+        <img src="/logo.gif" alt="Prime Lead Pulse" className="w-8 h-8 rounded-md object-contain bg-slate-900" />
         <span className="font-bold text-lg tracking-tight text-slate-900">Prime Lead Pulse</span>
       </div>
 
