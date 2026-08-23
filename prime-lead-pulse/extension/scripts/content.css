@@ -1,0 +1,11 @@
+/* Styling for the injected Prime Lead Pulse checkbox in Gmail */
+.prime-track-checkbox {
+  margin-right: 4px !important;
+  cursor: pointer;
+}
+
+.prime-track-checkbox + label {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
