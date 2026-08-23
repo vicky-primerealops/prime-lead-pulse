@@ -9,9 +9,9 @@ const PIXEL_BUFFER = Buffer.from(
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const emailId = params.id;
+  const { id: emailId } = await params;
   const userAgent = request.headers.get('user-agent') || 'Unknown';
   const ipAddress = request.headers.get('x-forwarded-for') || 'Unknown';
 

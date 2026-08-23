@@ -3,9 +3,9 @@ import { supabase } from '@/utils/supabase';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const emailId = params.id;
+  const { id: emailId } = await params;
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
 
