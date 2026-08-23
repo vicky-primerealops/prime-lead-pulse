@@ -10,7 +10,8 @@
   "host_permissions": [
     "*://mail.google.com/*",
     "*://*.supabase.co/*",
-    "*://localhost/*"
+    "*://localhost/*",
+    "*://*.vercel.app/*"
   ],
   "action": {
     "default_popup": "popup/index.html"
