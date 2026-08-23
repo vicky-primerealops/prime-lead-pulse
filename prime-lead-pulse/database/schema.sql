@@ -1,4 +1,6 @@
--- Run these commands in your Supabase project's SQL Editor
+-- Drop tables if they exist to start fresh
+DROP TABLE IF EXISTS public.tracking_events CASCADE;
+DROP TABLE IF EXISTS public.emails CASCADE;
 
 -- 1. Create the emails table
 CREATE TABLE public.emails (
@@ -29,7 +31,7 @@ CREATE TABLE public.tracking_events (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     email_id UUID REFERENCES public.emails(id) ON DELETE CASCADE,
     event_type VARCHAR NOT NULL CHECK (event_type IN ('open', 'click')),
-    url TEXT, -- Only populated for clicks
+    url TEXT,
     ip_address VARCHAR,
     user_agent TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -38,7 +40,7 @@ CREATE TABLE public.tracking_events (
 -- Secure the tracking_events table with Row Level Security (RLS)
 ALTER TABLE public.tracking_events ENABLE ROW LEVEL SECURITY;
 
--- Allow anyone to INSERT a tracking event (since the pixel/link is hit publicly by the recipient)
+-- Allow anyone to INSERT a tracking event
 CREATE POLICY "Anyone can insert tracking events" 
 ON public.tracking_events FOR INSERT 
 WITH CHECK (true);
