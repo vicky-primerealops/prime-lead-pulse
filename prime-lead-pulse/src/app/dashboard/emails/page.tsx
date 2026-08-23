@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useDashboardData, ProcessedEmail } from '@/hooks/useDashboardData';
-import Sidebar from '@/components/Sidebar';
+import DashboardLayout from '@/components/DashboardLayout';
 import ActivityModal from '@/components/ActivityModal';
 import { Eye, MousePointerClick, Search } from 'lucide-react';
 
@@ -55,12 +55,11 @@ export default function TrackedEmailsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Sidebar userEmail={user?.email || ''} onLogout={logout} />
-      <main className="flex-1 overflow-y-auto p-8">
+    <DashboardLayout userEmail={user?.email || ''} onLogout={logout}>
+      <div className="p-8 max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Tracked Emails</h1>
-          <p className="text-gray-500 text-sm mt-1">Monitor and view all your tracked emails. Click a row to see the full activity timeline.</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Tracked Emails</h1>
+          <p className="text-slate-500 text-[13px] mt-1 font-medium">Monitor and view all your tracked emails. Click a row to see the full activity timeline.</p>
         </div>
 
         {/* Filters */}
@@ -154,12 +153,12 @@ export default function TrackedEmailsPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Activity Timeline Modal */}
       {selectedEmail && (
         <ActivityModal email={selectedEmail} onClose={() => setSelectedEmail(null)} />
       )}
-    </div>
+    </DashboardLayout>
   );
 }
