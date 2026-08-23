@@ -1,156 +1,446 @@
-// Content Script for Gmail
+// ============================================================
+// Prime Lead Pulse — Gmail Content Script (v2)
+// Features:
+//  1. Inject "Track this email" toggle in compose window
+//  2. Intercept Send to embed pixel + rewrite links
+//  3. Sent folder: inject "Untracked / Opened Nx / Clicked Nx" badges
+//  4. Email view: inject right-side panel with Opens, Clicks, Timeline
+//  5. Thread view: inject "View Activity (N)" button
+// ============================================================
 
-console.log("Prime Lead Pulse: Content script loaded.");
+const PRIME_STYLE_ID = 'prime-lead-pulse-styles';
 
-// Helper: inject the checkbox into the compose window toolbar
-function injectToolbar(composeWindow) {
-  if (composeWindow.dataset.trackerInjected) return;
-  composeWindow.dataset.trackerInjected = "true";
+// ------ Inject global CSS once ------
+if (!document.getElementById(PRIME_STYLE_ID)) {
+  const style = document.createElement('style');
+  style.id = PRIME_STYLE_ID;
+  style.textContent = `
+    .plp-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+    .plp-badge-untracked { background: #f3f4f6; color: #6b7280; }
+    .plp-badge-opened { background: #d1fae5; color: #065f46; }
+    .plp-badge-clicked { background: #c7d2fe; color: #3730a3; }
 
-  // Find the button row (usually contains the Send button)
+    .plp-panel {
+      position: fixed;
+      top: 60px;
+      right: 0;
+      width: 320px;
+      height: calc(100vh - 60px);
+      background: #fff;
+      border-left: 1px solid #e5e7eb;
+      box-shadow: -4px 0 16px rgba(0,0,0,0.08);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Google Sans', Arial, sans-serif;
+      font-size: 13px;
+    }
+    .plp-panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .plp-panel-title { font-weight: 600; color: #111827; font-size: 14px; }
+    .plp-panel-close {
+      cursor: pointer;
+      color: #9ca3af;
+      font-size: 18px;
+      line-height: 1;
+      border: none;
+      background: none;
+      padding: 0 2px;
+    }
+    .plp-panel-close:hover { color: #374151; }
+    .plp-panel-meta { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 12px; }
+    .plp-panel-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .plp-stat-box {
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .plp-stat-num { font-size: 22px; font-weight: 700; color: #111827; }
+    .plp-stat-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+    .plp-status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .plp-status-opened { background: #d1fae5; color: #065f46; }
+    .plp-status-clicked { background: #c7d2fe; color: #3730a3; }
+    .plp-status-untracked { background: #f3f4f6; color: #6b7280; }
+    .plp-timeline-title {
+      padding: 12px 16px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6b7280;
+    }
+    .plp-timeline-scroll { overflow-y: auto; flex: 1; padding: 0 16px 16px; }
+    .plp-timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f9fafb;
+    }
+    .plp-event-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+    .plp-event-open { background: #eff6ff; }
+    .plp-event-click { background: #f0fdf4; }
+    .plp-event-text { flex: 1; }
+    .plp-event-label { font-weight: 500; color: #374151; }
+    .plp-event-time { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+    .plp-event-url { font-size: 11px; color: #6366f1; margin-top: 3px; word-break: break-all; }
+    .plp-view-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #3b82f6;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      margin-left: 8px;
+    }
+    .plp-view-btn:hover { background: #dbeafe; }
+  `;
+  document.head.appendChild(style);
+}
+
+// ------ State ------
+let emailCache = []; // [{id, subject, recipient, sender_email, opens, clicks, status, events}]
+let panelEmailId = null;
+
+// ------ Helpers ------
+function formatEventTime(iso) {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  });
+}
+
+function getActiveSenderEmail() {
+  // Try to get from profile icon aria-label (e.g. "Google Account: Vicky (vicky@diyflatfee.com)")
+  const accountBtn = document.querySelector('a[aria-label*="Google Account"]');
+  if (accountBtn) {
+    const match = accountBtn.getAttribute('aria-label').match(/\(([^)]+@[^)]+)\)/);
+    if (match) return match[1];
+  }
+  // Fallback: extract u/N from URL
+  const urlMatch = location.pathname.match(/\/u\/(\d+)\//);
+  return urlMatch ? `account_${urlMatch[1]}` : null;
+}
+
+function findEmailBySubject(subject) {
+  if (!subject) return null;
+  const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  return emailCache.find(e => norm(e.subject) === norm(subject)) || null;
+}
+
+// ------ API Calls via background ------
+async function fetchEmailStats(senderEmail) {
+  return new Promise(resolve => {
+    chrome.runtime.sendMessage({ action: 'GET_STATS', senderEmail }, response => {
+      if (response && response.success) {
+        // Build enriched cache
+        emailCache = response.data.emails.map(email => {
+          const opens = (email.tracking_events || []).filter(e => e.event_type === 'open');
+          const clicks = (email.tracking_events || []).filter(e => e.event_type === 'click');
+          let status = 'Untracked';
+          if (clicks.length > 0) status = 'Clicked';
+          else if (opens.length > 0) status = 'Opened';
+          return { ...email, opens: opens.length, clicks: clicks.length, status, events: email.tracking_events || [] };
+        });
+      }
+      resolve();
+    });
+  });
+}
+
+// ------ Sent Folder Badge Injection ------
+function injectSentBadges() {
+  const emailRows = document.querySelectorAll('tr.zA');
+  emailRows.forEach(row => {
+    if (row.dataset.plpBadged) return;
+
+    const subjectEl = row.querySelector('.y6 span, .bog, span[data-thread-id]');
+    if (!subjectEl) return;
+
+    const subject = subjectEl.textContent.trim();
+    const record = findEmailBySubject(subject);
+
+    const badge = document.createElement('span');
+    badge.className = 'plp-badge';
+    badge.dataset.plpBadge = 'true';
+
+    if (!record) {
+      badge.className += ' plp-badge-untracked';
+      badge.textContent = 'Untracked';
+    } else if (record.clicks > 0) {
+      badge.className += ' plp-badge-clicked';
+      badge.textContent = `Clicked ${record.clicks}x`;
+    } else if (record.opens > 0) {
+      badge.className += ' plp-badge-opened';
+      badge.textContent = `Opened ${record.opens}x`;
+    } else {
+      badge.className += ' plp-badge-untracked';
+      badge.textContent = 'Untracked';
+    }
+
+    subjectEl.parentElement.insertBefore(badge, subjectEl);
+    row.dataset.plpBadged = 'true';
+  });
+}
+
+// ------ Right-Side Activity Panel ------
+function removePanel() {
+  const existing = document.getElementById('plp-panel');
+  if (existing) existing.remove();
+  panelEmailId = null;
+}
+
+function showPanel(record, subject, to, sentDate) {
+  removePanel();
+  if (!record) return;
+  panelEmailId = record.id;
+
+  const panel = document.createElement('div');
+  panel.id = 'plp-panel';
+  panel.className = 'plp-panel';
+
+  const statusClass = record.status === 'Clicked' ? 'plp-status-clicked'
+    : record.status === 'Opened' ? 'plp-status-opened' : 'plp-status-untracked';
+
+  const eventsHtml = [...record.events]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .map(ev => {
+      const isOpen = ev.event_type === 'open';
+      return `
+        <div class="plp-timeline-item">
+          <div class="plp-event-icon ${isOpen ? 'plp-event-open' : 'plp-event-click'}">
+            ${isOpen ? '👁️' : '🔗'}
+          </div>
+          <div class="plp-event-text">
+            <div class="plp-event-label">${isOpen ? 'Opened email' : 'Clicked link'}</div>
+            <div class="plp-event-time">${formatEventTime(ev.created_at)}</div>
+            ${!isOpen && ev.url ? `<div class="plp-event-url">${ev.url}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  panel.innerHTML = `
+    <div class="plp-panel-header">
+      <span class="plp-panel-title">${subject || 'Email Details'}</span>
+      <button class="plp-panel-close" id="plp-close-btn">✕</button>
+    </div>
+    <div class="plp-panel-meta">
+      <div>To: ${to || record.recipient || ''}</div>
+      ${sentDate ? `<div>Sent: ${sentDate}</div>` : ''}
+    </div>
+    <div class="plp-panel-stats">
+      <div class="plp-stat-box">
+        <div class="plp-stat-num">${record.opens}</div>
+        <div class="plp-stat-label">Opens</div>
+      </div>
+      <div class="plp-stat-box">
+        <div class="plp-stat-num">${record.clicks}</div>
+        <div class="plp-stat-label">Clicks</div>
+      </div>
+      <div class="plp-stat-box" style="display:flex;align-items:center;justify-content:center;">
+        <span class="plp-status-badge ${statusClass}">${record.status}</span>
+      </div>
+    </div>
+    <div class="plp-timeline-title">Activity Timeline</div>
+    <div class="plp-timeline-scroll">${eventsHtml || '<div style="color:#9ca3af;padding:16px 0;text-align:center;">No activity yet</div>'}</div>
+  `;
+
+  document.body.appendChild(panel);
+  document.getElementById('plp-close-btn').addEventListener('click', removePanel);
+}
+
+// ------ Detect open email and inject panel + View Activity button ------
+function injectEmailViewFeatures() {
+  // Check if we're viewing a single email
+  const subjectEl = document.querySelector('h2.hP');
+  if (!subjectEl) return;
+
+  const subject = subjectEl.textContent.trim();
+  const record = findEmailBySubject(subject);
+
+  // Inject panel if we have a record and it's not already showing for this email
+  if (record && panelEmailId !== record.id) {
+    const toEl = document.querySelector('.gD');
+    const to = toEl ? toEl.getAttribute('email') || toEl.textContent : '';
+    const dateEl = document.querySelector('.g3');
+    const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
+    showPanel(record, subject, to, sentDate);
+  } else if (!record) {
+    removePanel();
+  }
+
+  // Inject "View Activity (N)" button in thread view
+  const dateRows = document.querySelectorAll('.g3');
+  dateRows.forEach(dateEl => {
+    if (dateEl.dataset.plpBtn) return;
+    if (!record) return;
+    const total = record.opens + record.clicks;
+    const btn = document.createElement('button');
+    btn.className = 'plp-view-btn';
+    btn.textContent = `View Activity (${total})`;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const to = document.querySelector('.gD')?.getAttribute('email') || '';
+      showPanel(record, subject, to, '');
+    };
+    dateEl.parentElement.insertBefore(btn, dateEl.nextSibling);
+    dateEl.dataset.plpBtn = 'true';
+  });
+}
+
+// ------ Compose Window Injection ------
+function injectComposeTool(composeWindow) {
+  if (composeWindow.dataset.plpInjected) return;
+  composeWindow.dataset.plpInjected = 'true';
+
   const actionRow = composeWindow.querySelector('.gU.Up');
   if (!actionRow) return;
 
-  const trackContainer = document.createElement('div');
-  trackContainer.style.display = 'inline-flex';
-  trackContainer.style.alignItems = 'center';
-  trackContainer.style.marginLeft = '10px';
-  trackContainer.style.marginRight = '10px';
-  trackContainer.style.fontSize = '13px';
-  trackContainer.style.color = '#444';
+  const container = document.createElement('div');
+  container.style.cssText = 'display:inline-flex;align-items:center;margin-left:8px;gap:4px;';
 
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
-  checkbox.id = 'prime-track-checkbox-' + Date.now();
-  checkbox.checked = true; // default on
   checkbox.className = 'prime-track-checkbox';
+  checkbox.checked = true;
+  checkbox.id = `plp-chk-${Date.now()}`;
 
   const label = document.createElement('label');
   label.htmlFor = checkbox.id;
-  label.innerText = ' Track Opens & Clicks';
-  label.style.marginLeft = '4px';
+  label.textContent = 'Track';
+  label.style.cssText = 'font-size:12px;color:#444;cursor:pointer;user-select:none;';
 
-  trackContainer.appendChild(checkbox);
-  trackContainer.appendChild(label);
-
-  actionRow.insertBefore(trackContainer, actionRow.children[1] || null);
+  container.appendChild(checkbox);
+  container.appendChild(label);
+  actionRow.insertBefore(container, actionRow.children[1] || null);
 }
 
-// Observe DOM for new compose windows
-const observer = new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    for (const node of mutation.addedNodes) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        // Compose windows usually have role="dialog"
-        if (node.getAttribute('role') === 'dialog' || node.querySelector('div[role="dialog"]')) {
-          const composeWindows = document.querySelectorAll('div[role="dialog"]');
-          composeWindows.forEach(injectToolbar);
-        }
-      }
-    }
-  }
-});
-observer.observe(document.body, { childList: true, subtree: true });
-
-// Intercept Send Button clicks (Capture phase)
+// ------ Send Interception ------
 document.addEventListener('click', async (e) => {
-  const target = e.target;
-  
-  // Is this the send button? (Gmail send buttons have specific classes, or aria-label="Send")
-  const isSendButton = target.closest('div[aria-label^="Send"]') || 
-                       (target.closest('.T-I.J-J5-Ji.aoO.v7.T-I-atl.L3') !== null);
-                       
-  if (!isSendButton) return;
+  const isSend = e.target.closest('div[aria-label^="Send"]') ||
+    e.target.closest('.T-I.J-J5-Ji.aoO.v7.T-I-atl.L3');
+  if (!isSend) return;
 
-  const composeWindow = target.closest('div[role="dialog"]');
-  if (!composeWindow) return;
+  const compose = e.target.closest('div[role="dialog"]');
+  if (!compose) return;
 
-  const checkbox = composeWindow.querySelector('.prime-track-checkbox');
+  const checkbox = compose.querySelector('.prime-track-checkbox');
   if (!checkbox || !checkbox.checked) return;
 
-  // We are tracking this email!
-  // 1. Get sender email
-  const fromField = composeWindow.querySelector('input[name="from"]');
-  let senderEmail = fromField ? fromField.value : '';
-  if (!senderEmail) {
-    // fallback to global profile email if possible, or extract from DOM
-    senderEmail = document.title.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi)?.[0] || 'unknown';
-  }
-
-  // 2. Get recipient
-  const toFields = composeWindow.querySelectorAll('input[name="to"]');
-  let recipient = Array.from(toFields).map(input => input.value).join(', ');
-  if (!recipient) {
-    // Sometimes it's in a div with email attribute
-    const emailChips = composeWindow.querySelectorAll('div[email]');
-    recipient = Array.from(emailChips).map(chip => chip.getAttribute('email')).join(', ');
-  }
-
-  // 3. Get subject
-  const subjectField = composeWindow.querySelector('input[name="subjectbox"]');
-  const subject = subjectField ? subjectField.value : 'No Subject';
-
-  // We need to pause the send, but stopping propagation in Gmail is risky and often breaks the UI.
-  // Instead, we rapidly call our background script to register the email, get the ID, and mutate the DOM before the network request fires.
-  // Actually, capturing a synchronous DOM change is fine. Making an async call before letting click propagate requires `e.stopPropagation()`.
-  
   e.preventDefault();
   e.stopPropagation();
-  
-  const originalButton = target.closest('[role="button"]');
-  originalButton.style.opacity = '0.5';
-  originalButton.style.pointerEvents = 'none';
 
-  try {
-    // Ask background to create email in Supabase
-    chrome.runtime.sendMessage({
-      action: 'CREATE_EMAIL',
-      payload: { sender_email: senderEmail, recipient, subject }
-    }, (response) => {
-      if (response && response.success) {
-        const emailRecord = response.data.email;
-        
-        // Get the actual message body element
-        const messageBody = composeWindow.querySelector('div[aria-label="Message Body"]');
-        if (messageBody) {
-          // Get the base API URL from storage to construct links
-          chrome.storage.local.get(['apiUrl'], (result) => {
-            const apiUrl = result.apiUrl || 'http://localhost:3000';
-            
-            // Append Pixel
-            const pixel = document.createElement('img');
-            pixel.src = `${apiUrl}/api/track/pixel/${emailRecord.id}`;
-            pixel.width = 1;
-            pixel.height = 1;
-            pixel.style.display = 'none';
-            messageBody.appendChild(pixel);
+  const btn = isSend.closest('[role="button"]') || isSend;
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
 
-            // Rewrite Links
-            const links = messageBody.querySelectorAll('a');
-            links.forEach(link => {
-              const originalUrl = link.href;
-              // Don't rewrite mailto links
-              if (!originalUrl.startsWith('mailto:')) {
-                link.href = `${apiUrl}/api/track/link/${emailRecord.id}?url=${encodeURIComponent(originalUrl)}`;
-              }
-            });
+  const senderEmail = getActiveSenderEmail() || 'unknown';
+  const emailChips = compose.querySelectorAll('div[email]');
+  const recipient = Array.from(emailChips).map(c => c.getAttribute('email')).join(', ') ||
+    (compose.querySelector('input[name="to"]')?.value ?? '');
+  const subject = compose.querySelector('input[name="subjectbox"]')?.value ?? 'No Subject';
 
-            // Now artificially trigger the send again, but bypass our interceptor
-            checkbox.checked = false; // Prevent infinite loop
-            originalButton.style.opacity = '1';
-            originalButton.style.pointerEvents = 'auto';
-            originalButton.click();
+  chrome.runtime.sendMessage({
+    action: 'CREATE_EMAIL',
+    payload: { sender_email: senderEmail, recipient, subject }
+  }, response => {
+    if (response?.success) {
+      const { email } = response.data;
+      chrome.storage.local.get(['apiUrl'], ({ apiUrl }) => {
+        const base = (apiUrl || '').replace(/\/$/, '');
+        const body = compose.querySelector('div[aria-label="Message Body"]');
+        if (body) {
+          // Inject pixel
+          const pixel = document.createElement('img');
+          pixel.src = `${base}/api/track/pixel/${email.id}`;
+          pixel.width = 1; pixel.height = 1; pixel.style.display = 'none';
+          body.appendChild(pixel);
+
+          // Rewrite links
+          body.querySelectorAll('a').forEach(a => {
+            if (!a.href.startsWith('mailto:')) {
+              a.href = `${base}/api/track/link/${email.id}?url=${encodeURIComponent(a.href)}`;
+            }
           });
         }
-      } else {
-        alert("Failed to track email. Ensure you are logged into Prime Lead Pulse.");
-        originalButton.style.opacity = '1';
-        originalButton.style.pointerEvents = 'auto';
-      }
+        checkbox.checked = false;
+        btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+        btn.click();
+      });
+    } else {
+      alert('Prime Lead Pulse: Failed to track. Please check you are logged in.');
+      btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+    }
+  });
+}, true);
+
+// ------ Master MutationObserver ------
+let refreshTimeout = null;
+const observer = new MutationObserver(() => {
+  // Debounce
+  clearTimeout(refreshTimeout);
+  refreshTimeout = setTimeout(() => {
+    // Refresh cache and re-inject on every significant DOM change
+    const senderEmail = getActiveSenderEmail();
+    fetchEmailStats(senderEmail).then(() => {
+      injectSentBadges();
+      injectEmailViewFeatures();
     });
-  } catch (err) {
-    console.error(err);
-    originalButton.style.opacity = '1';
-    originalButton.style.pointerEvents = 'auto';
-  }
-}, true); // Use capture phase!
+
+    // Compose windows
+    document.querySelectorAll('div[role="dialog"]').forEach(injectComposeTool);
+  }, 600);
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Initial load
+const senderEmail = getActiveSenderEmail();
+fetchEmailStats(senderEmail).then(() => {
+  injectSentBadges();
+  injectEmailViewFeatures();
+});
+
+console.log('Prime Lead Pulse: Content script v2 loaded.');
