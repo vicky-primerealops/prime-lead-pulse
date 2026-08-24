@@ -190,8 +190,10 @@ async function fetchEmailStats(senderEmail) {
           else if (opens.length > 0) status = 'Opened';
           return { ...email, opens: opens.length, clicks: clicks.length, status, events: email.tracking_events || [] };
         });
+      } else {
+        console.error('Prime Lead Pulse: Failed to fetch stats.', response?.error);
       }
-      resolve();
+      resolve(); // Always resolve so UI still initializes
     });
   });
 }
@@ -230,9 +232,9 @@ function injectSentBadges() {
     }
 
     const senderEl = row.querySelector('.yW');
-    if (senderEl && senderEl.parentElement) {
-      // TrackMailbox puts it right before the sender name
-      senderEl.parentElement.insertBefore(badge, senderEl);
+    if (senderEl) {
+      // Insert inside the .yW container so it doesn't break table cell layouts
+      senderEl.insertBefore(badge, senderEl.firstChild);
     } else {
       subjectEl.parentElement.insertBefore(badge, subjectEl);
     }
