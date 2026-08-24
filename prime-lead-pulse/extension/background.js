@@ -5,7 +5,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { session, apiUrl } = await chrome.storage.local.get(['session', 'apiUrl']);
         if (!session || !apiUrl) throw new Error('Not logged in');
 
-        const res = await fetch(`${apiUrl}/api/emails`, {
+        const base = apiUrl.replace(/\/$/, '');
+        const res = await fetch(`${base}/api/emails`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -29,8 +30,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { session, apiUrl } = await chrome.storage.local.get(['session', 'apiUrl']);
         if (!session || !apiUrl) throw new Error('Not logged in');
 
+        const base = apiUrl.replace(/\/$/, '');
         const query = request.senderEmail ? `?sender_email=${encodeURIComponent(request.senderEmail)}` : '';
-        const res = await fetch(`${apiUrl}/api/emails${query}`, {
+        const res = await fetch(`${base}/api/emails${query}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`
@@ -68,6 +70,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   }
+
+  if (request.action === 'CHECK_NOTIFICATIONS') {
+    pollForNotifications();
+    sendResponse({ success: true });
+    return false; // Sync response
+  }
 });
 
 // ------ Notification Polling ------
@@ -85,11 +93,12 @@ async function pollForNotifications() {
   const { session, apiUrl, knownEventIds } = await chrome.storage.local.get(['session', 'apiUrl', 'knownEventIds']);
   if (!session || !apiUrl) return;
 
+  const base = apiUrl.replace(/\/$/, '');
   const currentKnownIds = new Set(knownEventIds || []);
   let hasNewEvents = false;
 
   try {
-    const res = await fetch(`${apiUrl}/api/emails`, {
+    const res = await fetch(`${base}/api/emails`, {
       headers: { 'Authorization': `Bearer ${session.access_token}` }
     });
     if (!res.ok) return;

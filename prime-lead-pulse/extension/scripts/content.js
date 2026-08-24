@@ -166,7 +166,14 @@ function getActiveSenderEmail() {
 function findEmailBySubject(subject) {
   if (!subject) return null;
   const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
-  return emailCache.find(e => norm(e.subject) === norm(subject)) || null;
+  const normSubj = norm(subject);
+  // Try exact match first
+  let match = emailCache.find(e => norm(e.subject) === normSubj);
+  // If no exact match, try prefix match (Gmail often appends " - body snippet" to list view subjects)
+  if (!match) {
+    match = emailCache.find(e => normSubj.startsWith(norm(e.subject)));
+  }
+  return match || null;
 }
 
 // ------ API Calls via background ------
@@ -195,10 +202,13 @@ function injectSentBadges() {
   emailRows.forEach(row => {
     if (row.dataset.plpBadged) return;
 
-    const subjectEl = row.querySelector('.y6 span, .bog, span[data-thread-id]');
+    // Prefer innermost spans to avoid picking up body snippets in the subject line
+    const subjectEl = row.querySelector('span[data-thread-id], span.bqe, .bog');
     if (!subjectEl) return;
 
-    const subject = subjectEl.textContent.trim();
+    // We no longer split by ' - ' because findEmailBySubject handles prefix matching perfectly!
+    let subject = subjectEl.textContent.trim();
+    
     const record = findEmailBySubject(subject);
 
     const badge = document.createElement('span');
@@ -455,11 +465,13 @@ document.addEventListener('click', async (e) => {
 
   const senderEmail = getActiveSenderEmail() || 'unknown';
   const chipElements = Array.from(compose.querySelectorAll('[data-hovercard-id]'));
-  let recipient = chipElements.map(el => el.getAttribute('data-hovercard-id')).filter(Boolean).join(', ');
+  let recipientList = [...new Set(chipElements.map(el => el.getAttribute('data-hovercard-id')).filter(Boolean))];
+  let recipient = recipientList.join(', ');
   
   if (!recipient) {
     const legacyChips = Array.from(compose.querySelectorAll('div[email]'));
-    recipient = legacyChips.map(c => c.getAttribute('email')).join(', ');
+    let legacyList = [...new Set(legacyChips.map(c => c.getAttribute('email')).filter(Boolean))];
+    recipient = legacyList.join(', ');
   }
   if (!recipient) {
     recipient = compose.querySelector('input[name="to"]')?.value || 'Unknown Recipient';
@@ -516,6 +528,12 @@ const observer = new MutationObserver(() => {
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
+
+// ------ Instant Notifications Loop ------
+// Wake up the background worker every 3 seconds to check for new opens/clicks!
+setInterval(() => {
+  chrome.runtime.sendMessage({ action: 'CHECK_NOTIFICATIONS' });
+}, 3000);
 
 // Initial load
 const senderEmail = getActiveSenderEmail();
