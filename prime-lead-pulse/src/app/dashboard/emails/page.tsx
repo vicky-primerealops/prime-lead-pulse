@@ -28,7 +28,7 @@ function formatDate(iso: string | null) {
 }
 
 export default function TrackedEmailsPage() {
-  const { emails, loading, user, logout } = useDashboardData();
+  const { emails, loading, user, logout, deleteEmail } = useDashboardData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | ProcessedEmail['status']>('All');
   const [page, setPage] = useState(1);

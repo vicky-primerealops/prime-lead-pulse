@@ -105,5 +105,5 @@ export function useDashboardData() {
     }
   };
 
-  return { emails, loading, user, logout, deleteEmail };
+  return { emails, loading, user, logout, deleteEmail, supabase };
 }
