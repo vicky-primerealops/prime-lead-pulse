@@ -16,7 +16,32 @@ export async function GET(
   const ipAddress = request.headers.get('x-forwarded-for') || 'Unknown';
 
   try {
-    // Debounce: prevent duplicate opens within 5 seconds
+    // 1. Fetch the email to check its creation time
+    const { data: emailData } = await supabase
+      .from('emails')
+      .select('created_at')
+      .eq('id', emailId)
+      .single();
+
+    // 2. BOT FILTER: Ignore opens that happen within 45 seconds of sending
+    if (emailData) {
+      const emailAgeMs = Date.now() - new Date(emailData.created_at).getTime();
+      if (emailAgeMs < 45000) {
+        // Return the pixel but DO NOT log the event
+        return new NextResponse(PIXEL_BUFFER, {
+          status: 200,
+          headers: {
+            'Content-Type': 'image/png',
+            'Content-Length': PIXEL_BUFFER.length.toString(),
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
+        });
+      }
+    }
+
+    // 3. Debounce: prevent duplicate opens within 5 seconds
     const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
     const { data: recentOpens } = await supabase
       .from('tracking_events')
