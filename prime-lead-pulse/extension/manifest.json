@@ -7,8 +7,18 @@
     "storage",
     "scripting",
     "notifications",
-    "alarms"
+    "alarms",
+    "declarativeNetRequest"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
   "host_permissions": [
     "*://mail.google.com/*",
     "*://*.supabase.co/*",
