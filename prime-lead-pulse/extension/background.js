@@ -52,7 +52,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { session, apiUrl } = await chrome.storage.local.get(['session', 'apiUrl']);
         if (!session || !apiUrl) throw new Error('Not logged in');
 
-        const res = await fetch(`${apiUrl}/api/templates`, {
+        const base = apiUrl.replace(/\/$/, '');
+        const res = await fetch(`${base}/api/templates`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`
