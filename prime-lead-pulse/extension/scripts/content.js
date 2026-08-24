@@ -245,7 +245,14 @@ function injectSentBadges() {
       e.stopPropagation(); // prevent Gmail from opening the email
       
       // Extract basic info from the list view row for the panel
-      const to = senderEl ? senderEl.textContent.trim() : 'Unknown';
+      let to = 'Unknown';
+      if (senderEl) {
+        const clone = senderEl.cloneNode(true);
+        const b = clone.querySelector('.plp-badge');
+        if (b) b.remove();
+        to = clone.textContent.trim();
+      }
+      
       const dateEl = row.querySelector('.xW.xY span');
       const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
       
@@ -464,7 +471,7 @@ document.addEventListener('click', async (e) => {
     e.target.closest('.T-I.J-J5-Ji.aoO.v7.T-I-atl.L3');
   if (!isSend) return;
 
-  const compose = e.target.closest('div[role="dialog"]');
+  const compose = e.target.closest('div[role="dialog"], .M9');
   if (!compose) return;
 
   const checkbox = compose.querySelector('.prime-track-checkbox');
@@ -527,8 +534,8 @@ document.addEventListener('click', async (e) => {
 // ------ Master MutationObserver ------
 let statsTimeout = null;
 const observer = new MutationObserver(() => {
-  // 1. Compose windows need instant injection, no debounce delay!
-  document.querySelectorAll('div[role="dialog"]').forEach(injectComposeTool);
+  // 1. Compose windows (popouts and inline replies) need instant injection
+  document.querySelectorAll('div[role="dialog"], .M9').forEach(injectComposeTool);
 
   // 2. Refresh the UI instantly using current cache
   clearTimeout(statsTimeout);
