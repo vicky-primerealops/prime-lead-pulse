@@ -333,10 +333,11 @@ function injectEmailViewFeatures() {
 // ------ Compose Window Injection ------
 function injectComposeTool(composeWindow) {
   if (composeWindow.dataset.plpInjected) return;
-  composeWindow.dataset.plpInjected = 'true';
 
   const actionRow = composeWindow.querySelector('.gU.Up');
-  if (!actionRow) return;
+  if (!actionRow) return; // Wait for it to render
+
+  composeWindow.dataset.plpInjected = 'true';
 
   const container = document.createElement('div');
   container.style.cssText = 'display:inline-flex;align-items:center;margin-left:8px;gap:12px;';
