@@ -104,11 +104,11 @@ async function pollForNotifications() {
           // Only notify if we already had known events (prevents spam on first ever load)
           if (knownEventIds && knownEventIds.length > 0) {
             const isClick = ev.event_type === 'click';
-            const title = isClick ? 'Link Clicked!' : 'Email Opened!';
+            const title = isClick ? 'Link Clicked' : 'Email Opened';
             const recipient = email.recipient || 'Unknown Recipient';
             const message = isClick 
-              ? `${recipient} clicked a link in "${email.subject}"` 
-              : `${recipient} opened your email "${email.subject}"`;
+              ? `${recipient} clicked a link in your email - "${email.subject}"` 
+              : `${recipient} opened your email - "${email.subject}"`;
               
             chrome.notifications.create(ev.id, {
               type: 'basic',
