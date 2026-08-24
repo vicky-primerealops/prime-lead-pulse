@@ -23,10 +23,10 @@ export async function GET(
       .eq('id', emailId)
       .single();
 
-    // 2. BOT FILTER: Ignore opens that happen within 45 seconds of sending
+    // 2. BOT FILTER: Ignore opens that happen within 10 seconds of sending
     if (emailData) {
       const emailAgeMs = Date.now() - new Date(emailData.created_at).getTime();
-      if (emailAgeMs < 45000) {
+      if (emailAgeMs < 10000) {
         // Return the pixel but DO NOT log the event
         return new NextResponse(PIXEL_BUFFER, {
           status: 200,
