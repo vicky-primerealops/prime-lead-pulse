@@ -225,11 +225,18 @@ function injectSentBadges() {
       badge.className += ' plp-badge-opened';
       badge.textContent = `Opened ${record.opens}x`;
     } else {
-      badge.className += ' plp-badge-untracked';
-      badge.textContent = 'Untracked';
+      badge.className += ' plp-badge-unopened';
+      badge.textContent = 'Unopened';
     }
 
-    subjectEl.parentElement.insertBefore(badge, subjectEl);
+    const senderEl = row.querySelector('.yW');
+    if (senderEl && senderEl.parentElement) {
+      // TrackMailbox puts it right before the sender name
+      senderEl.parentElement.insertBefore(badge, senderEl);
+    } else {
+      subjectEl.parentElement.insertBefore(badge, subjectEl);
+    }
+    
     row.dataset.plpBadged = 'true';
   });
 }

@@ -116,9 +116,18 @@ async function pollForNotifications() {
             const isClick = ev.event_type === 'click';
             const title = isClick ? 'Link Clicked' : 'Email Opened';
             const recipient = email.recipient || 'Unknown Recipient';
-            const message = isClick 
-              ? `${recipient} clicked a link in your email - "${email.subject}"` 
-              : `${recipient} opened your email - "${email.subject}"`;
+            const isMultiple = recipient.includes(',');
+            
+            let message;
+            if (isMultiple) {
+              message = isClick 
+                ? `Someone clicked a link in your email to ${recipient} - "${email.subject}"` 
+                : `Someone opened your email to ${recipient} - "${email.subject}"`;
+            } else {
+              message = isClick 
+                ? `${recipient} clicked a link in your email - "${email.subject}"` 
+                : `${recipient} opened your email - "${email.subject}"`;
+            }
               
             chrome.notifications.create(ev.id, {
               type: 'basic',
