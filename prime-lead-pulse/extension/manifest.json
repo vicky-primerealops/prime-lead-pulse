@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "scripting",
-    "notifications"
+    "notifications",
+    "alarms"
   ],
   "host_permissions": [
     "*://mail.google.com/*",
