@@ -5,7 +5,8 @@
   "description": "Track email opens and clicks directly inside Gmail.",
   "permissions": [
     "storage",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
   "host_permissions": [
     "*://mail.google.com/*",

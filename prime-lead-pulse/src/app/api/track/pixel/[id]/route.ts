@@ -16,14 +16,14 @@ export async function GET(
   const ipAddress = request.headers.get('x-forwarded-for') || 'Unknown';
 
   try {
-    // Debounce: prevent duplicate opens within 60 seconds
-    const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+    // Debounce: prevent duplicate opens within 5 seconds
+    const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
     const { data: recentOpens } = await supabase
       .from('tracking_events')
       .select('id')
       .eq('email_id', emailId)
       .eq('event_type', 'open')
-      .gte('created_at', sixtySecondsAgo)
+      .gte('created_at', fiveSecondsAgo)
       .limit(1);
 
     if (!recentOpens || recentOpens.length === 0) {

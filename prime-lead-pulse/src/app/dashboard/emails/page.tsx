@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useDashboardData, ProcessedEmail } from '@/hooks/useDashboardData';
 import DashboardLayout from '@/components/DashboardLayout';
 import ActivityModal from '@/components/ActivityModal';
-import { Eye, MousePointerClick, Search } from 'lucide-react';
+import { Eye, MousePointerClick, Search, Trash2 } from 'lucide-react';
 
 function StatusBadge({ status }: { status: ProcessedEmail['status'] }) {
   const styles = {
@@ -96,12 +96,13 @@ export default function TrackedEmailsPage() {
                 <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Engagement</th>
                 <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Sent</th>
                 <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Last Opened</th>
+                <th className="text-right px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-gray-400">
+                  <td colSpan={6} className="text-center py-12 text-gray-400">
                     No tracked emails found.
                   </td>
                 </tr>
@@ -110,7 +111,7 @@ export default function TrackedEmailsPage() {
                   <tr
                     key={email.id}
                     onClick={() => setSelectedEmail(email)}
-                    className="hover:bg-indigo-50/50 transition-colors cursor-pointer"
+                    className="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
                   >
                     <td className="px-5 py-4">
                       <p className="font-medium text-gray-900 truncate max-w-xs">{email.subject}</p>
@@ -133,6 +134,20 @@ export default function TrackedEmailsPage() {
                     </td>
                     <td className="px-5 py-4 text-gray-500 text-xs">{formatDate(email.created_at)}</td>
                     <td className="px-5 py-4 text-gray-500 text-xs">{formatDate(email.last_opened)}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('Are you sure you want to delete this tracked email log?')) {
+                            deleteEmail(email.id);
+                          }
+                        }}
+                        className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-2"
+                        title="Delete log"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

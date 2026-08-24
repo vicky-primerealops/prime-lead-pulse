@@ -108,3 +108,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  const supabase = getAuthClient(request);
+  if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Email ID is required' }, { status: 400 });
+    }
+
+    // Because of RLS, the user can only delete their own emails
+    const { error } = await supabase
+      .from('emails')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting email:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

@@ -339,21 +339,92 @@ function injectComposeTool(composeWindow) {
   if (!actionRow) return;
 
   const container = document.createElement('div');
-  container.style.cssText = 'display:inline-flex;align-items:center;margin-left:8px;gap:4px;';
+  container.style.cssText = 'display:inline-flex;align-items:center;margin-left:8px;gap:12px;';
 
+  // "Use Template" Button
+  const tplBtn = document.createElement('div');
+  tplBtn.style.position = 'relative';
+  tplBtn.innerHTML = `<button type="button" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#444;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+    Use Template
+  </button>`;
+  
+  const dropdown = document.createElement('div');
+  dropdown.style.cssText = 'display:none;position:absolute;bottom:100%;left:0;margin-bottom:8px;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);width:250px;max-height:300px;overflow-y:auto;z-index:999;';
+  tplBtn.appendChild(dropdown);
+
+  tplBtn.querySelector('button').onclick = () => {
+    if (dropdown.style.display === 'block') {
+      dropdown.style.display = 'none';
+      return;
+    }
+    dropdown.innerHTML = '<div style="padding:12px;text-align:center;color:#64748b;font-size:12px;">Loading templates...</div>';
+    dropdown.style.display = 'block';
+    
+    chrome.runtime.sendMessage({ action: 'GET_TEMPLATES' }, response => {
+      if (!response || !response.success) {
+        dropdown.innerHTML = '<div style="padding:12px;color:#ef4444;font-size:12px;">Error loading templates</div>';
+        return;
+      }
+      if (response.data.templates.length === 0) {
+        dropdown.innerHTML = '<div style="padding:12px;text-align:center;color:#64748b;font-size:12px;">No templates found. Create one in the dashboard.</div>';
+        return;
+      }
+      dropdown.innerHTML = '';
+      response.data.templates.forEach(tpl => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:10px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:13px;color:#0f172a;';
+        item.textContent = tpl.name;
+        item.onmouseover = () => item.style.background = '#f8fafc';
+        item.onmouseout = () => item.style.background = 'white';
+        item.onclick = () => {
+          // Fill Subject
+          const subjInput = composeWindow.querySelector('input[name="subjectbox"]');
+          if (subjInput) subjInput.value = tpl.subject || '';
+          
+          // Fill Body (Gmail uses a contenteditable div)
+          const bodyDiv = composeWindow.querySelector('div[contenteditable="true"]');
+          if (bodyDiv) bodyDiv.innerHTML = (tpl.body || '').replace(/\n/g, '<br/>') + '<br/><br/>' + bodyDiv.innerHTML;
+          
+          dropdown.style.display = 'none';
+        };
+        dropdown.appendChild(item);
+      });
+    });
+  };
+
+  // Close dropdown if clicked outside
+  document.addEventListener('click', (e) => {
+    if (!tplBtn.contains(e.target)) dropdown.style.display = 'none';
+  });
+
+  // "Best Time" Button
+  const timeBtn = document.createElement('div');
+  timeBtn.innerHTML = `<button type="button" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#444;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Best Time
+  </button>`;
+  timeBtn.onclick = () => window.open('https://prime-lead-pulse.vercel.app/dashboard/calendar', '_blank', 'width=800,height=600');
+
+  // Track Checkbox
+  const trackWrapper = document.createElement('div');
+  trackWrapper.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'prime-track-checkbox';
   checkbox.checked = true;
   checkbox.id = `plp-chk-${Date.now()}`;
-
   const label = document.createElement('label');
   label.htmlFor = checkbox.id;
-  label.textContent = 'Track';
-  label.style.cssText = 'font-size:12px;color:#444;cursor:pointer;user-select:none;';
+  label.innerHTML = '<span style="color:#10b981;font-weight:bold;margin-right:2px;">●</span>Track';
+  label.style.cssText = 'font-size:12px;color:#444;font-weight:600;cursor:pointer;user-select:none;';
+  trackWrapper.appendChild(checkbox);
+  trackWrapper.appendChild(label);
 
-  container.appendChild(checkbox);
-  container.appendChild(label);
+  container.appendChild(tplBtn);
+  container.appendChild(timeBtn);
+  container.appendChild(trackWrapper);
+  
   actionRow.insertBefore(container, actionRow.children[1] || null);
 }
 

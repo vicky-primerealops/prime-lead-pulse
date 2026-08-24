@@ -85,5 +85,25 @@ export function useDashboardData() {
     router.push('/');
   };
 
-  return { emails, loading, user, logout };
+  const deleteEmail = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch(`/api/emails?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (res.ok) {
+        setEmails(prev => prev.filter(e => e.id !== id));
+      }
+    } catch (err) {
+      console.error('Error deleting email:', err);
+    }
+  };
+
+  return { emails, loading, user, logout, deleteEmail };
 }
