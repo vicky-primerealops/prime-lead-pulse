@@ -334,23 +334,23 @@ function injectEmailViewFeatures() {
 function injectComposeTool(composeWindow) {
   if (composeWindow.dataset.plpInjected) return;
 
-  // The bottom toolbar in Gmail has a right-side container holding the 3 dots and Trash can.
-  // We want to insert our tools right before the 3 dots to prevent collapsing the formatting bar.
-  const trashBtn = composeWindow.querySelector('div[aria-label^="Discard"]');
-  if (!trashBtn) return; // Wait for it to render
+  const sendBtn = composeWindow.querySelector('div[aria-label^="Send"]');
+  if (!sendBtn) return; 
 
-  const rightToolbar = trashBtn.parentElement.parentElement;
-  if (!rightToolbar) return;
+  // Find the table that contains the bottom toolbar
+  const bottomTable = sendBtn.closest('table');
+  if (!bottomTable) return;
 
   composeWindow.dataset.plpInjected = 'true';
 
+  // Create a completely separate row (div) for our tools
   const container = document.createElement('div');
-  container.style.cssText = 'display:inline-flex;align-items:center;margin-right:12px;gap:12px;';
+  container.style.cssText = 'display:flex;align-items:center;padding:8px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;gap:16px;margin-bottom:4px;border-radius:4px;';
 
   // "Use Template" Button
   const tplBtn = document.createElement('div');
   tplBtn.style.position = 'relative';
-  tplBtn.innerHTML = `<button type="button" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#444;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+  tplBtn.innerHTML = `<button type="button" style="display:inline-flex;align-items:center;gap:6px;background:white;border:1px solid #cbd5e1;color:#334155;font-size:12px;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
     Use Template
   </button>`;
@@ -386,10 +386,8 @@ function injectComposeTool(composeWindow) {
         item.onclick = () => {
           const subjInput = composeWindow.querySelector('input[name="subjectbox"]');
           if (subjInput) subjInput.value = tpl.subject || '';
-          
           const bodyDiv = composeWindow.querySelector('div[contenteditable="true"]');
           if (bodyDiv) bodyDiv.innerHTML = (tpl.body || '').replace(/\n/g, '<br/>') + '<br/><br/>' + bodyDiv.innerHTML;
-          
           dropdown.style.display = 'none';
         };
         dropdown.appendChild(item);
@@ -403,24 +401,28 @@ function injectComposeTool(composeWindow) {
 
   // "Best Time" Button
   const timeBtn = document.createElement('div');
-  timeBtn.innerHTML = `<button type="button" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#444;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+  timeBtn.innerHTML = `<button type="button" style="display:inline-flex;align-items:center;gap:6px;background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#fde68a'" onmouseout="this.style.background='#fef3c7'">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Best Time
   </button>`;
   timeBtn.onclick = () => window.open('https://prime-lead-pulse.vercel.app/dashboard/calendar', '_blank', 'width=800,height=600');
 
-  // Track Checkbox
+  // Track Checkbox (styled like a toggle)
   const trackWrapper = document.createElement('div');
-  trackWrapper.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
+  trackWrapper.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #bbf7d0;padding:6px 12px;border-radius:16px;cursor:pointer;';
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'prime-track-checkbox';
   checkbox.checked = true;
   checkbox.id = `plp-chk-${Date.now()}`;
+  checkbox.style.cssText = 'cursor:pointer;accent-color:#16a34a;';
   const label = document.createElement('label');
   label.htmlFor = checkbox.id;
-  label.innerHTML = '<span style="color:#10b981;font-weight:bold;margin-right:2px;">●</span>Track';
-  label.style.cssText = 'font-size:12px;color:#444;font-weight:600;cursor:pointer;user-select:none;';
+  label.innerHTML = '<span style="color:#16a34a;font-weight:bold;margin-right:4px;">●</span>Track Opens';
+  label.style.cssText = 'font-size:12px;color:#166534;font-weight:600;cursor:pointer;user-select:none;';
+  trackWrapper.onclick = (e) => {
+    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+  };
   trackWrapper.appendChild(checkbox);
   trackWrapper.appendChild(label);
 
@@ -428,8 +430,8 @@ function injectComposeTool(composeWindow) {
   container.appendChild(timeBtn);
   container.appendChild(trackWrapper);
   
-  // Insert before the 3 dots / trash can container
-  rightToolbar.insertBefore(container, rightToolbar.firstChild);
+  // Insert our new row precisely above the bottom formatting table
+  bottomTable.parentElement.insertBefore(container, bottomTable);
 }
 
 // ------ Send Interception ------
