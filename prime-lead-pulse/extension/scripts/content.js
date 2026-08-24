@@ -334,8 +334,13 @@ function injectEmailViewFeatures() {
 function injectComposeTool(composeWindow) {
   if (composeWindow.dataset.plpInjected) return;
 
-  const actionRow = composeWindow.querySelector('.gU.Up');
-  if (!actionRow) return; // Wait for it to render
+  // Try multiple selectors for Gmail's bottom toolbar
+  const sendBtn = composeWindow.querySelector('div[aria-label^="Send"]');
+  if (!sendBtn) return; // Wait for send button to render
+
+  // The toolbar row containing the Send button
+  const actionRow = sendBtn.closest('.btC') || sendBtn.closest('.gU.Up') || sendBtn.parentElement.parentElement;
+  if (!actionRow) return;
 
   composeWindow.dataset.plpInjected = 'true';
 
@@ -426,7 +431,14 @@ function injectComposeTool(composeWindow) {
   container.appendChild(timeBtn);
   container.appendChild(trackWrapper);
   
-  actionRow.insertBefore(container, actionRow.children[1] || null);
+  // Find the parent of the Send button (usually a grouping div) and append next to it
+  const sendBtnContainer = sendBtn.parentElement;
+  if (sendBtnContainer && sendBtnContainer.parentElement) {
+    // Insert after the send button group, or as the last child
+    sendBtnContainer.parentElement.insertBefore(container, sendBtnContainer.nextSibling);
+  } else {
+    actionRow.appendChild(container);
+  }
 }
 
 // ------ Send Interception ------
