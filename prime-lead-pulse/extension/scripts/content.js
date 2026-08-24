@@ -334,18 +334,18 @@ function injectEmailViewFeatures() {
 function injectComposeTool(composeWindow) {
   if (composeWindow.dataset.plpInjected) return;
 
-  // Try multiple selectors for Gmail's bottom toolbar
-  const sendBtn = composeWindow.querySelector('div[aria-label^="Send"]');
-  if (!sendBtn) return; // Wait for send button to render
+  // The bottom toolbar in Gmail has a right-side container holding the 3 dots and Trash can.
+  // We want to insert our tools right before the 3 dots to prevent collapsing the formatting bar.
+  const trashBtn = composeWindow.querySelector('div[aria-label^="Discard"]');
+  if (!trashBtn) return; // Wait for it to render
 
-  // The toolbar row containing the Send button
-  const actionRow = sendBtn.closest('.btC') || sendBtn.closest('.gU.Up') || sendBtn.parentElement.parentElement;
-  if (!actionRow) return;
+  const rightToolbar = trashBtn.parentElement.parentElement;
+  if (!rightToolbar) return;
 
   composeWindow.dataset.plpInjected = 'true';
 
   const container = document.createElement('div');
-  container.style.cssText = 'display:inline-flex;align-items:center;margin-left:8px;gap:12px;';
+  container.style.cssText = 'display:inline-flex;align-items:center;margin-right:12px;gap:12px;';
 
   // "Use Template" Button
   const tplBtn = document.createElement('div');
@@ -384,11 +384,9 @@ function injectComposeTool(composeWindow) {
         item.onmouseover = () => item.style.background = '#f8fafc';
         item.onmouseout = () => item.style.background = 'white';
         item.onclick = () => {
-          // Fill Subject
           const subjInput = composeWindow.querySelector('input[name="subjectbox"]');
           if (subjInput) subjInput.value = tpl.subject || '';
           
-          // Fill Body (Gmail uses a contenteditable div)
           const bodyDiv = composeWindow.querySelector('div[contenteditable="true"]');
           if (bodyDiv) bodyDiv.innerHTML = (tpl.body || '').replace(/\n/g, '<br/>') + '<br/><br/>' + bodyDiv.innerHTML;
           
@@ -399,7 +397,6 @@ function injectComposeTool(composeWindow) {
     });
   };
 
-  // Close dropdown if clicked outside
   document.addEventListener('click', (e) => {
     if (!tplBtn.contains(e.target)) dropdown.style.display = 'none';
   });
@@ -431,14 +428,8 @@ function injectComposeTool(composeWindow) {
   container.appendChild(timeBtn);
   container.appendChild(trackWrapper);
   
-  // Find the parent of the Send button (usually a grouping div) and append next to it
-  const sendBtnContainer = sendBtn.parentElement;
-  if (sendBtnContainer && sendBtnContainer.parentElement) {
-    // Insert after the send button group, or as the last child
-    sendBtnContainer.parentElement.insertBefore(container, sendBtnContainer.nextSibling);
-  } else {
-    actionRow.appendChild(container);
-  }
+  // Insert before the 3 dots / trash can container
+  rightToolbar.insertBefore(container, rightToolbar.firstChild);
 }
 
 // ------ Send Interception ------
@@ -461,11 +452,9 @@ document.addEventListener('click', async (e) => {
   btn.style.pointerEvents = 'none';
 
   const senderEmail = getActiveSenderEmail() || 'unknown';
-  // Find recipient chips in Gmail's new DOM structure
   const chipElements = Array.from(compose.querySelectorAll('[data-hovercard-id]'));
   let recipient = chipElements.map(el => el.getAttribute('data-hovercard-id')).filter(Boolean).join(', ');
   
-  // Fallbacks for older Gmail DOMs or plain inputs
   if (!recipient) {
     const legacyChips = Array.from(compose.querySelectorAll('div[email]'));
     recipient = legacyChips.map(c => c.getAttribute('email')).join(', ');
@@ -485,13 +474,11 @@ document.addEventListener('click', async (e) => {
         const base = (apiUrl || '').replace(/\/$/, '');
         const body = compose.querySelector('div[aria-label="Message Body"]');
         if (body) {
-          // Inject pixel
           const pixel = document.createElement('img');
           pixel.src = `${base}/api/track/pixel/${email.id}`;
           pixel.width = 1; pixel.height = 1; pixel.style.display = 'none';
           body.appendChild(pixel);
 
-          // Rewrite links
           body.querySelectorAll('a').forEach(a => {
             if (!a.href.startsWith('mailto:')) {
               a.href = `${base}/api/track/link/${email.id}?url=${encodeURIComponent(a.href)}`;
@@ -510,21 +497,20 @@ document.addEventListener('click', async (e) => {
 }, true);
 
 // ------ Master MutationObserver ------
-let refreshTimeout = null;
+let statsTimeout = null;
 const observer = new MutationObserver(() => {
-  // Debounce
-  clearTimeout(refreshTimeout);
-  refreshTimeout = setTimeout(() => {
-    // Refresh cache and re-inject on every significant DOM change
+  // 1. Compose windows need instant injection, no debounce delay!
+  document.querySelectorAll('div[role="dialog"]').forEach(injectComposeTool);
+
+  // 2. Heavy stats fetching is safely debounced
+  clearTimeout(statsTimeout);
+  statsTimeout = setTimeout(() => {
     const senderEmail = getActiveSenderEmail();
     fetchEmailStats(senderEmail).then(() => {
       injectSentBadges();
       injectEmailViewFeatures();
     });
-
-    // Compose windows
-    document.querySelectorAll('div[role="dialog"]').forEach(injectComposeTool);
-  }, 600);
+  }, 1000);
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
