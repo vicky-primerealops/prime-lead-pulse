@@ -129,55 +129,73 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_set):
             if not nums:
                 continue
 
-            # Bulk process emails in chunks of 500 for massive speedup
-            chunk_size = 500
+            # Bulk process emails in chunks of 50 to prevent GoDaddy IMAP crashes
+            chunk_size = 50
             for i in range(0, len(nums), chunk_size):
                 chunk = nums[i:i + chunk_size]
                 chunk_str = b','.join(chunk)
                 to_delete = []
                 
                 try:
-                    typ, data = mail.fetch(chunk_str, "(BODY[HEADER.FIELDS (FROM TO CC)])")
-                    if typ != "OK" or not data:
+                    # Fetch headers including X-Warmup-Email and Subject
+                    typ, data = mail.fetch(chunk_str, "(BODY[HEADER.FIELDS (FROM TO CC SUBJECT X-WARMUP-EMAIL)])")
+                    if typ != "OK":
                         continue
-                        
-                    for item in data:
-                        if isinstance(item, tuple):
+
+                    for msg_data in data:
+                        if isinstance(msg_data, tuple):
+                            header_bytes = msg_data[1]
+                            # parse sequence number (e.g., b'123 (BODY[...' -> b'123')
+                            num = msg_data[0].split()[0]
+                            
                             try:
-                                header_info = item[0].decode(errors="ignore")
-                                msg_num_str = header_info.split()[0]
-                                num = msg_num_str.encode()
-                                
-                                raw_headers = item[1]
-                                msg = emaillib.message_from_bytes(raw_headers)
-                                
+                                msg = emaillib.message_from_bytes(header_bytes)
                                 from_addrs = extract_addresses(msg.get("From", ""))
                                 to_addrs   = extract_addresses(msg.get("To", ""))
                                 cc_addrs   = extract_addresses(msg.get("Cc", ""))
+                                subject    = msg.get("Subject", "")
+                                x_warmup   = msg.get("X-Warmup-Email", "")
+                                
                                 all_recipients = to_addrs + cc_addrs
                                 
                                 from_is_warmup = all(a in warmup_set for a in from_addrs) and len(from_addrs) > 0
                                 recipients_are_warmup = all(a in warmup_set for a in all_recipients) and len(all_recipients) > 0
                                 
-                                if from_is_warmup and recipients_are_warmup:
+                                # 100% foolproof identifier:
+                                is_warmup = False
+                                if x_warmup.strip().lower() == "true":
+                                    is_warmup = True
+                                elif from_is_warmup and recipients_are_warmup:
+                                    # Fallback for old emails: Check if subject matches warmup subjects exactly
+                                    warmup_subjects = [
+                                        "connecting", "checking in", "quick question", "touching base",
+                                        "following up", "introduction", "thoughts on this?",
+                                        "feedback on the proposal", "schedule change", "coffee next week?"
+                                    ]
+                                    subj_clean = subject.strip().lower()
+                                    if any(ws in subj_clean for ws in warmup_subjects):
+                                        is_warmup = True
+
+                                if is_warmup:
                                     to_delete.append(num)
                                     log.info(f"      ✓ Marked for deletion: {from_addrs} → {all_recipients}")
-                                else:
-                                    if "vicky@diyflatfee.com" in from_addrs:
-                                        log.info(f"      ⏭ Skipping: {from_addrs} → {all_recipients}")
                             except Exception as e:
                                 log.warning(f"      Error parsing headers: {e}")
                                 
                     if to_delete:
                         delete_str = b','.join(to_delete)
-                        try:
-                            mail.store(delete_str, '+X-GM-LABELS', '\\Trash')
-                        except Exception:
-                            pass
-                        try:
-                            mail.copy(delete_str, 'Trash')
-                        except Exception:
-                            pass
+                        is_gmail = "gmail" in str(getattr(mail, 'host', '')).lower()
+                        
+                        if is_gmail:
+                            try:
+                                mail.store(delete_str, '+X-GM-LABELS', '\\Trash')
+                            except Exception:
+                                pass
+                        else:
+                            try:
+                                mail.copy(delete_str, 'Trash')
+                            except Exception:
+                                pass
                             
                         mail.store(delete_str, "+FLAGS", "\\Deleted")
                         deleted += len(to_delete)

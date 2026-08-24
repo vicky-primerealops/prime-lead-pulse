@@ -3,6 +3,7 @@ import smtplib
 import imaplib
 import email
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import random
 import time
 import logging
@@ -199,13 +200,15 @@ def send_reply(account, to_email, subject, in_reply_to):
         with smtplib.SMTP_SSL(server_info["smtp"], server_info["port"]) as server:
             server.login(account['email'], account['password'])
             body = random.choice(REPLY_BODIES)
-            msg = MIMEText(body)
+            msg = MIMEMultipart()
             msg["Subject"] = subject
             msg["From"] = account['email']
             msg["To"] = to_email
-            if in_reply_to:
-                msg["In-Reply-To"] = in_reply_to
-                msg["References"] = in_reply_to
+            msg["In-Reply-To"] = in_reply_to
+            msg["References"] = in_reply_to
+            msg["X-Warmup-Email"] = "True"  # Hidden signature for safe deletion
+            
+            msg.attach(MIMEText(body, "plain"))
             server.send_message(msg)
             log.info(f"    -> Sent REPLY to {to_email}")
     except Exception as e:
@@ -230,10 +233,13 @@ def send_new_emails(account, all_emails):
                 subject = random.choice(SUBJECTS)
                 body = random.choice(BODIES)
                 
-                msg = MIMEText(body)
-                msg["Subject"] = subject
+                msg = MIMEMultipart()
                 msg["From"] = sender_email
                 msg["To"] = receiver
+                msg["Subject"] = subject
+                msg["X-Warmup-Email"] = "True"  # Hidden signature for safe deletion
+                
+                msg.attach(MIMEText(body, "plain"))
                 
                 server.send_message(msg)
                 log.info(f"    -> Sent email to {receiver}")
