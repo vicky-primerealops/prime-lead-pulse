@@ -239,6 +239,18 @@ function injectSentBadges() {
     } else {
       subjectEl.parentElement.insertBefore(badge, subjectEl);
     }
+
+    badge.style.cursor = 'pointer';
+    badge.onclick = (e) => {
+      e.stopPropagation(); // prevent Gmail from opening the email
+      
+      // Extract basic info from the list view row for the panel
+      const to = senderEl ? senderEl.textContent.trim() : 'Unknown';
+      const dateEl = row.querySelector('.xW.xY span');
+      const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
+      
+      showPanel(record, subject, to, sentDate);
+    };
   });
 }
 
@@ -309,7 +321,7 @@ function showPanel(record, subject, to, sentDate) {
   document.getElementById('plp-close-btn').addEventListener('click', removePanel);
 }
 
-// ------ Detect open email and inject panel + View Activity button ------
+// ------ Detect open email and inject View Activity button ------
 function injectEmailViewFeatures() {
   // Check if we're viewing a single email
   const subjectEl = document.querySelector('h2.hP');
@@ -318,14 +330,8 @@ function injectEmailViewFeatures() {
   const subject = subjectEl.textContent.trim();
   const record = findEmailBySubject(subject);
 
-  // Inject panel if we have a record and it's not already showing for this email
-  if (record && panelEmailId !== record.id) {
-    const toEl = document.querySelector('.gD');
-    const to = toEl ? toEl.getAttribute('email') || toEl.textContent : '';
-    const dateEl = document.querySelector('.g3');
-    const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
-    showPanel(record, subject, to, sentDate);
-  } else if (!record) {
+  // We NO LONGER auto-open the panel here. The user must click the Pill or the "View Activity" button.
+  if (!record) {
     removePanel();
   }
 
