@@ -202,7 +202,8 @@ async function fetchEmailStats(senderEmail) {
 function injectSentBadges() {
   const emailRows = document.querySelectorAll('tr.zA');
   emailRows.forEach(row => {
-    if (row.dataset.plpBadged) return;
+    // Check if badge physically exists instead of dataset, because Gmail recycles DOM nodes
+    if (row.querySelector('.plp-badge')) return;
 
     // Prefer innermost spans to avoid picking up body snippets in the subject line
     const subjectEl = row.querySelector('span[data-thread-id], span.bqe, .bog');
@@ -238,8 +239,6 @@ function injectSentBadges() {
     } else {
       subjectEl.parentElement.insertBefore(badge, subjectEl);
     }
-    
-    row.dataset.plpBadged = 'true';
   });
 }
 
@@ -525,23 +524,25 @@ const observer = new MutationObserver(() => {
   // 1. Compose windows need instant injection, no debounce delay!
   document.querySelectorAll('div[role="dialog"]').forEach(injectComposeTool);
 
-  // 2. Heavy stats fetching is safely debounced
+  // 2. Refresh the UI instantly using current cache
   clearTimeout(statsTimeout);
   statsTimeout = setTimeout(() => {
-    const senderEmail = getActiveSenderEmail();
-    fetchEmailStats(senderEmail).then(() => {
-      injectSentBadges();
-      injectEmailViewFeatures();
-    });
-  }, 1000);
+    injectSentBadges();
+    injectEmailViewFeatures();
+  }, 150); // fast UI refresh
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
 
 // ------ Instant Notifications Loop ------
-// Wake up the background worker every 3 seconds to check for new opens/clicks!
+// Wake up the background worker and update stats every 3 seconds!
 setInterval(() => {
   chrome.runtime.sendMessage({ action: 'CHECK_NOTIFICATIONS' });
+  const senderEmail = getActiveSenderEmail();
+  fetchEmailStats(senderEmail).then(() => {
+    injectSentBadges();
+    injectEmailViewFeatures();
+  });
 }, 3000);
 
 // Initial load
