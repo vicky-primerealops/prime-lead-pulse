@@ -8,25 +8,44 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMsg('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    if (isSignUp) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+      if (error) {
+        setError(error.message);
+      } else if (data.session) {
+        router.push('/dashboard');
+      } else {
+        setSuccessMsg('Check your email to confirm your account before signing in.');
+        setIsSignUp(false);
+      }
     } else {
-      router.push('/dashboard');
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        router.push('/dashboard');
+      }
     }
+    setLoading(false);
   };
 
   return (
@@ -37,10 +56,10 @@ export default function Home() {
             Prime Lead Pulse
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to access your email tracking dashboard
+            {isSignUp ? 'Create a new account' : 'Sign in to access your email tracking dashboard'}
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <form className="mt-8 space-y-6" onSubmit={handleAuth}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <input
@@ -65,6 +84,7 @@ export default function Home() {
           </div>
 
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {successMsg && <p className="text-green-600 text-sm text-center">{successMsg}</p>}
 
           <div>
             <button
@@ -72,7 +92,21 @@ export default function Home() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
+            </button>
+          </div>
+          
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError('');
+                setSuccessMsg('');
+              }}
+              className="text-sm text-indigo-600 hover:text-indigo-500 bg-transparent border-none cursor-pointer"
+            >
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
           </div>
         </form>
