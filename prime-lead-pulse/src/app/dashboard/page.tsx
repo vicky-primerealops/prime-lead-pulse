@@ -7,7 +7,7 @@ import Link from 'next/link';
 import HighInterest from '@/components/HighInterest';
 import RecentActivity from '@/components/RecentActivity';
 import ActivityTrends from '@/components/ActivityTrends';
-import { Mail, Eye, MousePointerClick, BarChart3, Clock, ChevronDown, TrendingUp } from 'lucide-react';
+import { Mail, Eye, MousePointerClick, BarChart3, Clock, ChevronDown, TrendingUp, MailPlus } from 'lucide-react';
 
 // Custom hook for animated numbers
 function AnimatedNumber({ value }: { value: string | number }) {
@@ -262,6 +262,10 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-500 truncate">{t.subject || 'No subject'}</p>
                   </Link>
                 ))}
+                
+                <Link href="/dashboard/templates" className="mt-4 w-full flex items-center justify-center gap-2 bg-slate-50 border border-dashed border-slate-300 text-slate-600 px-4 py-3 rounded-xl text-[13px] font-bold shadow-sm hover:bg-slate-100 hover:text-indigo-600 transition-colors">
+                  <MailPlus size={16} /> Create New Template
+                </Link>
               </div>
             )}
           </div>
