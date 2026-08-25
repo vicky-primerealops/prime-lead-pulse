@@ -202,9 +202,6 @@ async function fetchEmailStats() {
 function injectSentBadges() {
     const emailRows = document.querySelectorAll('tr.zA');
     emailRows.forEach(row => {
-      // Check if badge physically exists instead of dataset, because Gmail recycles DOM nodes
-      if (row.querySelector('.plp-badge')) return;
-
       // Find the recipient name/email column
       const recipientSpan = row.querySelector('.yP, .zF');
       if (!recipientSpan) return;
@@ -219,31 +216,40 @@ function injectSentBadges() {
       
       const record = findEmail(subject, recipientEmail);
 
-    const badge = document.createElement('span');
-    badge.className = 'plp-badge';
-    badge.dataset.plpBadge = 'true';
+      let badge = row.querySelector('.plp-badge');
+      const isNew = !badge;
 
-    if (!record) {
-      badge.className += ' plp-badge-untracked';
-      badge.textContent = 'Untracked';
-    } else if (record.clicks > 0) {
-      badge.className += ' plp-badge-clicked';
-      badge.textContent = `Clicked ${record.clicks}x`;
-    } else if (record.opens > 0) {
-      badge.className += ' plp-badge-opened';
-      badge.textContent = `Opened ${record.opens}x`;
-    } else {
-      badge.className += ' plp-badge-unopened';
-      badge.textContent = 'Unopened';
-    }
-
-    const senderEl = row.querySelector('.yW');
-    if (senderEl) {
-      // Insert inside the .yW container so it doesn't break table cell layouts
-      senderEl.insertBefore(badge, senderEl.firstChild);
-    } else {
-      subjectEl.parentElement.insertBefore(badge, subjectEl);
-    }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.dataset.plpBadge = 'true';
+      }
+      
+      // Reset classes
+      badge.className = 'plp-badge';
+  
+      if (!record) {
+        badge.className += ' plp-badge-untracked';
+        badge.textContent = 'Untracked';
+      } else if (record.clicks > 0) {
+        badge.className += ' plp-badge-clicked';
+        badge.textContent = `Clicked ${record.clicks}x`;
+      } else if (record.opens > 0) {
+        badge.className += ' plp-badge-opened';
+        badge.textContent = `Opened ${record.opens}x`;
+      } else {
+        badge.className += ' plp-badge-unopened';
+        badge.textContent = 'Unopened';
+      }
+  
+      if (isNew) {
+        const senderEl = row.querySelector('.yW');
+        if (senderEl) {
+          // Insert inside the .yW container so it doesn't break table cell layouts
+          senderEl.insertBefore(badge, senderEl.firstChild);
+        } else {
+          subjectEl.parentElement.insertBefore(badge, subjectEl);
+        }
+      }
 
     badge.style.cursor = 'pointer';
     badge.onclick = (e) => {
