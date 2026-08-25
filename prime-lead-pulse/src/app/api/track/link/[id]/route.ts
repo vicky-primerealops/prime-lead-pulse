@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Known bot/scanner user-agent patterns
 const BOT_UA_PATTERNS = [
   /bot/i, /crawler/i, /spider/i, /slurp/i, /mediapartners/i,
@@ -25,6 +20,11 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const { id: emailId } = await params;
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
