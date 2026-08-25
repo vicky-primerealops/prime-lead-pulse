@@ -47,8 +47,7 @@ var CAMPAIGN_ID = "${campaign.id}";
 var PLATFORM_API_URL = "${baseUrl}";
 var BATCH_SIZE = ${campaign.batch_size};
 var DELAY_SECONDS = ${campaign.delay_seconds};
-var EMAIL_SUBJECT = ${JSON.stringify(campaign.subject)};
-var EMAIL_BODY = ${JSON.stringify(campaign.body)};
+var DRAFT_SUBJECT = ${JSON.stringify(campaign.subject)};
 
 function startCampaign() {
   // Check if a trigger already exists to prevent duplicates
@@ -60,7 +59,22 @@ function startCampaign() {
     }
   }
   
-  Logger.log("Starting Campaign...");
+  // Verify draft exists before starting
+  var drafts = GmailApp.getDrafts();
+  var foundDraft = false;
+  for (var i = 0; i < drafts.length; i++) {
+    if (drafts[i].getMessage().getSubject() === DRAFT_SUBJECT) {
+      foundDraft = true;
+      break;
+    }
+  }
+  
+  if (!foundDraft) {
+    Logger.log("ERROR: Could not find a Gmail draft with the exact subject: " + DRAFT_SUBJECT);
+    return;
+  }
+  
+  Logger.log("Draft found! Starting Campaign...");
   
   // Set up the sheet if needed (add a 'Status' column)
   var sheet = SpreadsheetApp.getActiveSheet();
@@ -85,14 +99,31 @@ function processBatch() {
   var statusCol = headers.findIndex(function(h) { return h.toString().toLowerCase() === 'status'; });
   
   if (nameCol === -1 || emailCol === -1) {
-    Logger.log("Error: Could not find 'name' or 'email' columns.");
+    Logger.log("Error: Could not find 'name' or 'email' columns in your sheet.");
     return;
   }
   
+  // Fetch the draft ONCE per batch to save API calls
+  var drafts = GmailApp.getDrafts();
+  var draftMessage = null;
+  for (var i = 0; i < drafts.length; i++) {
+    if (drafts[i].getMessage().getSubject() === DRAFT_SUBJECT) {
+      draftMessage = drafts[i].getMessage();
+      break;
+    }
+  }
+  
+  if (!draftMessage) {
+    Logger.log("Error: Draft vanished! Could not find draft with subject: " + DRAFT_SUBJECT);
+    return;
+  }
+  
+  var rawSubject = draftMessage.getSubject();
+  var rawBody = draftMessage.getBody();
   var emailsSentThisRun = 0;
   
   for (var i = 1; i < data.length; i++) {
-    // Check if we are approaching the 6-minute Google Apps Script timeout (stop at 4.5 minutes)
+    // Stop at 4.5 minutes to avoid Google Apps Script timeout (limit is 6 mins)
     if (new Date().getTime() - startTime > 270000) {
       Logger.log("Approaching time limit. Pausing and scheduling the next batch...");
       scheduleNextBatch();
@@ -101,9 +132,7 @@ function processBatch() {
     
     // Stop if we hit the batch limit
     if (emailsSentThisRun >= BATCH_SIZE) {
-      Logger.log("Batch size limit reached. Campaign complete or scheduling next batch...");
-      // Depending on if you want it to send EVERYTHING in chunks, or just stop at batch limit
-      // Assuming batch limit is the TOTAL they want to send right now.
+      Logger.log("Batch size limit reached. Campaign complete.");
       clearTriggers();
       return;
     }
@@ -116,7 +145,7 @@ function processBatch() {
       var email = row[emailCol];
       
       if (name && email) {
-        var success = sendEmail(name, email);
+        var success = sendEmail(name, email, rawSubject, rawBody);
         if (success) {
           if (statusCol !== -1) {
             sheet.getRange(i + 1, statusCol + 1).setValue("Sent");
@@ -135,22 +164,27 @@ function processBatch() {
   clearTriggers();
 }
 
-function sendEmail(toName, toEmail) {
+function sendEmail(toName, toEmail, rawSubject, rawBody) {
   try {
     var firstName = toName.split(' ')[0] || "";
-    var subject = EMAIL_SUBJECT.replace(/{name}/g, firstName).replace(/{first_name}/g, firstName);
-    var bodyHtml = EMAIL_BODY.replace(/{name}/g, firstName).replace(/{first_name}/g, firstName);
-    bodyHtml = bodyHtml.replace(/\\n/g, "<br>");
+    var finalSubject = rawSubject.replace(/{name}/gi, firstName).replace(/{first_name}/gi, firstName);
+    var finalBody = rawBody.replace(/{name}/gi, firstName).replace(/{first_name}/gi, firstName);
     
     var senderEmail = Session.getActiveUser().getEmail();
-    var pixelHtml = registerAndGetPixel(senderEmail, toEmail, subject);
+    var pixelHtml = registerAndGetPixel(senderEmail, toEmail, finalSubject);
     
-    bodyHtml = bodyHtml + "<br><br>" + pixelHtml;
+    // Insert tracking pixel before closing body tag, or append at end
+    if (finalBody.indexOf("</body>") !== -1) {
+      finalBody = finalBody.replace("</body>", pixelHtml + "</body>");
+    } else {
+      finalBody = finalBody + "<br><br>" + pixelHtml;
+    }
     
     MailApp.sendEmail({
       to: toEmail,
-      subject: subject,
-      htmlBody: bodyHtml
+      subject: finalSubject,
+      htmlBody: finalBody,
+      name: Session.getActiveUser().getEmail().split("@")[0] // Fallback display name
     });
     
     Logger.log("Sent to " + toEmail);

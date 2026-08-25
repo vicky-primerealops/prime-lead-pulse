@@ -182,28 +182,25 @@ export default function CampaignsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 border-b border-slate-100 pb-2">
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs">2</span>
-                    <h3 className="font-semibold text-slate-900">Write your Email</h3>
+                    <h3 className="font-semibold text-slate-900">Link your Gmail Draft</h3>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Email Subject</label>
-                    <p className="text-xs text-slate-500 mb-2">Tip: Use <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">{`{first_name}`}</code> to personalize it automatically.</p>
-                    <input 
-                      required type="text"
-                      placeholder="e.g. Quick question for {first_name}..."
-                      className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                      value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})}
-                    />
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-2 text-sm text-blue-800 leading-relaxed">
+                    <p className="font-semibold mb-1">How this works:</p>
+                    <ol className="list-decimal ml-4 space-y-1">
+                      <li>Go to Gmail and create a new email draft with all your formatting, images, and signature.</li>
+                      <li>You can use <code className="bg-blue-100/50 px-1 py-0.5 rounded text-blue-700">{`{first_name}`}</code> anywhere in the draft's subject or body to personalize it.</li>
+                      <li>Copy the exact Subject of that draft and paste it below. Our script will automatically find it and send it!</li>
+                    </ol>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Email Body</label>
-                    <p className="text-xs text-slate-500 mb-2">Write your email here. HTML code is allowed if you want bolding or links.</p>
-                    <textarea 
-                      required rows={6}
-                      placeholder="Hi {first_name},\n\nI was wondering if you..."
-                      className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-mono text-sm leading-relaxed"
-                      value={formData.body} onChange={e => setFormData({...formData, body: e.target.value})}
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Exact Subject of your Gmail Draft</label>
+                    <input 
+                      required type="text"
+                      placeholder="e.g. Quick question for {first_name}"
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium"
+                      value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})}
                     />
                   </div>
                 </div>
