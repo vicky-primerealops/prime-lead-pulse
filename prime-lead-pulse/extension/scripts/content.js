@@ -161,16 +161,18 @@ function getActiveSenderEmail() {
   return urlMatch ? `account_${urlMatch[1]}` : null;
 }
 
-function findEmailBySubject(subject) {
+function findEmail(subject, recipientEmail) {
   if (!subject) return null;
   const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const normSubj = norm(subject);
-  // Try exact match first
-  let match = emailCache.find(e => norm(e.subject) === normSubj);
-  // If no exact match, try prefix match (Gmail often appends " - body snippet" to list view subjects)
-  if (!match) {
-    match = emailCache.find(e => normSubj.startsWith(norm(e.subject)));
-  }
+  const normRecip = recipientEmail ? recipientEmail.toLowerCase().trim() : '';
+  
+  let match = emailCache.find(e => {
+    const isSubjMatch = norm(e.subject) === normSubj || normSubj.startsWith(norm(e.subject));
+    const isRecipMatch = normRecip ? e.recipient.toLowerCase().includes(normRecip) : true;
+    return isSubjMatch && isRecipMatch;
+  });
+  
   return match || null;
 }
 
@@ -198,19 +200,24 @@ async function fetchEmailStats() {
 
 // ------ Sent Folder Badge Injection ------
 function injectSentBadges() {
-  const emailRows = document.querySelectorAll('tr.zA');
-  emailRows.forEach(row => {
-    // Check if badge physically exists instead of dataset, because Gmail recycles DOM nodes
-    if (row.querySelector('.plp-badge')) return;
+    const emailRows = document.querySelectorAll('tr.zA');
+    emailRows.forEach(row => {
+      // Check if badge physically exists instead of dataset, because Gmail recycles DOM nodes
+      if (row.querySelector('.plp-badge')) return;
 
-    // Prefer innermost spans to avoid picking up body snippets in the subject line
-    const subjectEl = row.querySelector('span[data-thread-id], span.bqe, .bog');
-    if (!subjectEl) return;
-
-    // We no longer split by ' - ' because findEmailBySubject handles prefix matching perfectly!
-    let subject = subjectEl.textContent.trim();
-    
-    const record = findEmailBySubject(subject);
+      // Find the recipient name/email column
+      const recipientSpan = row.querySelector('.yP, .zF');
+      if (!recipientSpan) return;
+      const recipientEmail = recipientSpan.getAttribute('email') || recipientSpan.textContent;
+  
+      // Prefer innermost spans to avoid picking up body snippets in the subject line
+      const subjectEl = row.querySelector('span[data-thread-id], span.bqe, .bog');
+      if (!subjectEl) return;
+  
+      // We no longer split by ' - ' because findEmail handles prefix matching perfectly!
+      let subject = subjectEl.textContent.trim();
+      
+      const record = findEmail(subject, recipientEmail);
 
     const badge = document.createElement('span');
     badge.className = 'plp-badge';
@@ -333,7 +340,7 @@ function injectEmailViewFeatures() {
   if (!subjectEl) return;
 
   const subject = subjectEl.textContent.trim();
-  const record = findEmailBySubject(subject);
+  const record = findEmail(subject, null);
 
   // We NO LONGER auto-open the panel here. The user must click the Pill or the "View Activity" button.
   if (!record) {
