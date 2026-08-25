@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 
 import { useDashboardData } from '@/hooks/useDashboardData';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -7,15 +8,56 @@ import RecentActivity from '@/components/RecentActivity';
 import ActivityTrends from '@/components/ActivityTrends';
 import { Mail, Eye, MousePointerClick, BarChart3, Clock, ChevronDown, TrendingUp } from 'lucide-react';
 
-function StatCard({ label, value, icon: Icon, colorClass, iconColor, trend }: { label: string; value: string | number; icon: any; colorClass: string; iconColor: string; trend?: boolean }) {
+// Custom hook for animated numbers
+function AnimatedNumber({ value }: { value: string | number }) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const isPercent = typeof value === 'string' && value.endsWith('%');
+  const target = parseFloat(value as string) || 0;
+
+  useEffect(() => {
+    if (target === 0) {
+      setDisplayValue(0);
+      return;
+    }
+    let start = 0;
+    const duration = 1000;
+    const steps = 60;
+    const increment = target / steps;
+    const stepTime = Math.abs(Math.floor(duration / steps));
+    
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= target) {
+        setDisplayValue(target);
+        clearInterval(timer);
+      } else {
+        setDisplayValue(start);
+      }
+    }, stepTime);
+    
+    return () => clearInterval(timer);
+  }, [target]);
+
+  const num = isPercent ? Math.floor(displayValue) : Math.round(displayValue);
+  return <>{num}{isPercent ? '%' : ''}</>;
+}
+
+function StatCard({ label, value, icon: Icon, colorClass, iconColor, gradient }: { label: string; value: string | number; icon: any; colorClass: string; iconColor: string; gradient?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-start justify-between shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div>
-        <p className="text-[11px] text-slate-500 uppercase tracking-widest font-bold mb-1.5">{label}</p>
-        <p className="text-3xl font-extrabold text-slate-900">{value}</p>
+    <div className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-default">
+      {/* Background hover flare */}
+      <div className={`absolute -right-8 -top-8 w-32 h-32 rounded-full ${colorClass} opacity-30 group-hover:scale-150 transition-transform duration-700 ease-out`} />
+      
+      <div className="flex items-start justify-between relative z-10 mb-4">
+        <div className={`p-3.5 rounded-xl ${gradient || 'bg-slate-100'} text-white shadow-md transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+          <Icon size={22} strokeWidth={2.5} className="text-white" />
+        </div>
       </div>
-      <div className={`p-2.5 rounded-xl ${colorClass}`}>
-        <Icon size={18} className={iconColor} />
+      <div className="relative z-10 mt-2">
+        <p className="text-4xl font-black text-slate-800 tracking-tight mb-1.5 drop-shadow-sm">
+          <AnimatedNumber value={value} />
+        </p>
+        <p className="text-[12px] text-slate-500 uppercase tracking-widest font-bold">{label}</p>
       </div>
     </div>
   );
@@ -94,10 +136,10 @@ export default function DashboardPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-4 gap-6">
-          <StatCard label="Total Emails" value={totalEmails} icon={Mail} colorClass="bg-indigo-50" iconColor="text-indigo-500" />
-          <StatCard label="Opens" value={totalOpens} icon={Eye} colorClass="bg-blue-50" iconColor="text-blue-500" />
-          <StatCard label="Clicks" value={totalClicks} icon={MousePointerClick} colorClass="bg-emerald-50" iconColor="text-emerald-500" />
-          <StatCard label="Open Rate" value={`${openRate}%`} icon={TrendingUp} colorClass="bg-pink-50" iconColor="text-pink-500" />
+          <StatCard label="Total Emails" value={totalEmails} icon={Mail} colorClass="bg-indigo-500" iconColor="text-white" gradient="bg-gradient-to-br from-indigo-500 to-purple-600" />
+          <StatCard label="Opens" value={totalOpens} icon={Eye} colorClass="bg-blue-500" iconColor="text-white" gradient="bg-gradient-to-br from-blue-400 to-blue-600" />
+          <StatCard label="Clicks" value={totalClicks} icon={MousePointerClick} colorClass="bg-emerald-500" iconColor="text-white" gradient="bg-gradient-to-br from-emerald-400 to-teal-500" />
+          <StatCard label="Open Rate" value={`${openRate}%`} icon={TrendingUp} colorClass="bg-pink-500" iconColor="text-white" gradient="bg-gradient-to-br from-pink-500 to-rose-500" />
         </div>
 
         {/* Middle Section (Time to Open & Engagement) */}
@@ -124,19 +166,19 @@ export default function DashboardPage() {
             )}
             
             {/* The main bar */}
-            <div className="w-full flex h-2 rounded-full overflow-hidden mb-6 gap-0.5">
-              <div className="bg-[#10b981]" style={{ width: `${pct(buckets.under1h)}%` }} />
-              <div className="bg-[#fbbf24]" style={{ width: `${pct(buckets.under4h)}%` }} />
-              <div className="bg-[#f97316]" style={{ width: `${pct(buckets.under2d)}%` }} />
-              <div className="bg-[#f43f5e]" style={{ width: `${pct(buckets.over2d)}%` }} />
-              <div className="bg-slate-200" style={{ width: `${pct(buckets.never)}%` }} />
+            <div className="w-full flex h-3 rounded-full overflow-hidden mb-6 gap-0.5 shadow-inner bg-slate-100">
+              <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-1000 ease-out" style={{ width: `${pct(buckets.under1h)}%` }} />
+              <div className="bg-gradient-to-r from-amber-300 to-amber-400 transition-all duration-1000 ease-out" style={{ width: `${pct(buckets.under4h)}%` }} />
+              <div className="bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-1000 ease-out" style={{ width: `${pct(buckets.under2d)}%` }} />
+              <div className="bg-gradient-to-r from-rose-400 to-rose-500 transition-all duration-1000 ease-out" style={{ width: `${pct(buckets.over2d)}%` }} />
+              <div className="bg-slate-200 transition-all duration-1000 ease-out" style={{ width: `${pct(buckets.never)}%` }} />
             </div>
 
             <div>
-              <BucketBar label="Within 1 hour" count={buckets.under1h} color="bg-[#10b981]" />
-              <BucketBar label="1 - 4 hours" count={buckets.under4h} color="bg-[#fbbf24]" />
-              <BucketBar label="Within 2 days" count={buckets.under2d} color="bg-[#f97316]" />
-              <BucketBar label="2+ days" count={buckets.over2d} color="bg-[#f43f5e]" />
+              <BucketBar label="Within 1 hour" count={buckets.under1h} color="bg-gradient-to-r from-emerald-400 to-emerald-500" />
+              <BucketBar label="1 - 4 hours" count={buckets.under4h} color="bg-gradient-to-r from-amber-300 to-amber-400" />
+              <BucketBar label="Within 2 days" count={buckets.under2d} color="bg-gradient-to-r from-orange-400 to-orange-500" />
+              <BucketBar label="2+ days" count={buckets.over2d} color="bg-gradient-to-r from-rose-400 to-rose-500" />
               <BucketBar label="Never opened" count={buckets.never} color="bg-slate-300" />
             </div>
           </div>
@@ -148,29 +190,29 @@ export default function DashboardPage() {
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
-                    <div className="bg-blue-50 p-1.5 rounded-md"><Eye size={14} className="text-blue-500" /></div>
+                    <div className="bg-gradient-to-br from-blue-400 to-blue-600 p-1.5 rounded-md shadow-sm text-white"><Eye size={14} /></div>
                     Open Rate
                   </div>
-                  <span className="font-extrabold text-slate-900 text-xl">{openRate}%</span>
+                  <span className="font-extrabold text-slate-900 text-xl"><AnimatedNumber value={`${openRate}%`} /></span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${openRate}%` }} />
+                <div className="w-full bg-slate-100 shadow-inner rounded-full h-3">
+                  <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out" style={{ width: `${openRate}%` }} />
                 </div>
-                <p className="text-[11px] font-medium text-slate-400 mt-2">{openedEmails} open</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-2">{openedEmails} open{openedEmails !== 1 ? 's' : ''}</p>
               </div>
               
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
-                    <div className="bg-emerald-50 p-1.5 rounded-md"><MousePointerClick size={14} className="text-emerald-500" /></div>
+                    <div className="bg-gradient-to-br from-emerald-400 to-teal-500 p-1.5 rounded-md shadow-sm text-white"><MousePointerClick size={14} /></div>
                     Click Rate
                   </div>
-                  <span className="font-extrabold text-slate-900 text-xl">{clickRate}%</span>
+                  <span className="font-extrabold text-slate-900 text-xl"><AnimatedNumber value={`${clickRate}%`} /></span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${clickRate}%` }} />
+                <div className="w-full bg-slate-100 shadow-inner rounded-full h-3">
+                  <div className="bg-gradient-to-r from-emerald-400 to-teal-500 h-3 rounded-full transition-all duration-1000 ease-out" style={{ width: `${clickRate}%` }} />
                 </div>
-                <p className="text-[11px] font-medium text-slate-400 mt-2">{totalClicks} click</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-2">{totalClicks} click{totalClicks !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
