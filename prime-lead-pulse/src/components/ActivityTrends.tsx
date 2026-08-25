@@ -32,11 +32,12 @@ export default function ActivityTrends({ events }: { events: any[] }) {
   const totalClicks = data.reduce((a, b) => a + b.Clicks, 0);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 col-span-2 hover:shadow-md transition-shadow duration-300">
-      <div className="flex justify-between items-start mb-6">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 col-span-2 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-blue-50/50 to-transparent rounded-full -mr-32 -mt-32 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      <div className="flex justify-between items-start mb-6 relative z-10">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Activity Trends (Last 30 Days)</h2>
-          <p className="text-xs text-slate-500 mt-1">Monitor your email engagement metrics over time</p>
+          <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Activity Trends (Last 30 Days)</h2>
+          <p className="text-[12px] font-medium text-slate-500 mt-1">Monitor your email engagement metrics over time</p>
         </div>
         <div className="flex items-center gap-4 text-xs font-medium">
           <div className="flex items-center gap-1.5 text-slate-600">

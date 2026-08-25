@@ -145,15 +145,18 @@ export default function DashboardPage() {
         {/* Middle Section (Time to Open & Engagement) */}
         <div className="grid grid-cols-2 gap-6">
           {/* Time to First Open */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-            <div className="flex items-center justify-between mb-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-100/30 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="flex items-center justify-between mb-5 relative z-10">
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-slate-400" />
-                <h2 className="font-bold text-slate-900 text-sm">Time to First Open</h2>
+                <h2 className="font-extrabold text-slate-900 tracking-tight text-sm">Time to First Open</h2>
               </div>
               <span className="text-[11px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100">{totalEmails} emails</span>
             </div>
             
+            <div className="relative z-10">
             {withOpens.length > 0 && (
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md flex items-center gap-1">
@@ -181,12 +184,15 @@ export default function DashboardPage() {
               <BucketBar label="2+ days" count={buckets.over2d} color="bg-gradient-to-r from-rose-400 to-rose-500" />
               <BucketBar label="Never opened" count={buckets.never} color="bg-slate-300" />
             </div>
+            </div>
           </div>
 
           {/* Engagement Rates */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-            <h2 className="font-bold text-slate-900 text-base mb-6">Engagement Rates</h2>
-            <div className="space-y-8">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100/30 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <h2 className="font-extrabold text-slate-900 tracking-tight text-base mb-6 relative z-10">Engagement Rates</h2>
+            <div className="space-y-8 relative z-10">
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
@@ -228,14 +234,15 @@ export default function DashboardPage() {
         <ActivityTrends events={allEvents} />
         
         {/* Templates Section */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-base font-bold text-slate-900">Email Templates</h2>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-slate-100/50 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="flex justify-between items-center mb-8 relative z-10">
+            <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Email Templates</h2>
             <button className="text-[12px] font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">
               View All <TrendingUp size={14} />
             </button>
           </div>
-          <div className="text-center py-10">
+          <div className="text-center py-10 relative z-10">
             <p className="text-[13px] text-slate-400 font-medium">No email templates yet</p>
             <button className="mt-3 text-[12px] font-bold text-slate-900 hover:text-indigo-600 transition-colors">
               Create your first email template

@@ -11,14 +11,17 @@ export default function HighInterest({ emails }: { emails: ProcessedEmail[] }) {
     .slice(0, 7);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-      <div className="flex items-center gap-2 mb-2">
-        <Flame size={18} className="text-orange-500 fill-orange-500/20" />
-        <h2 className="text-base font-bold text-slate-900">High Interest</h2>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-100/50 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="flex items-center gap-2 mb-2 relative z-10">
+        <div className="bg-gradient-to-br from-orange-400 to-red-500 p-1.5 rounded-lg shadow-sm text-white">
+          <Flame size={16} strokeWidth={2.5} />
+        </div>
+        <h2 className="text-base font-extrabold text-slate-900 tracking-tight">High Interest</h2>
       </div>
-      <p className="text-[11px] text-slate-500 mb-5">Recipients who opened your email multiple times are likely warm leads worth following up on.</p>
+      <p className="text-[12px] font-medium text-slate-500 mb-5 relative z-10">Recipients who opened your email multiple times are likely warm leads worth following up on.</p>
 
-      <div className="space-y-4">
+      <div className="space-y-4 relative z-10">
         {highInterest.length === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">No high interest emails yet.</p>
         ) : (

@@ -38,10 +38,11 @@ export default function RecentActivity({ emails }: { emails: ProcessedEmail[] })
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-      <h2 className="text-base font-bold text-slate-900 mb-6">Recent Activity</h2>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <h2 className="text-base font-extrabold text-slate-900 tracking-tight mb-6 relative z-10">Recent Activity</h2>
 
-      <div className="space-y-5">
+      <div className="space-y-5 relative z-10">
         {recent.length === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">No activity yet.</p>
         ) : (
