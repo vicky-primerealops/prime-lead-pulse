@@ -19,197 +19,205 @@ export async function GET(
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const { data: campaign, error } = await supabase
-    .from('campaigns')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single();
-
+  const { data: campaign, error } = await campaignQuery(id, user.id);
+  
   if (error || !campaign) {
     return new NextResponse('Campaign not found', { status: 404 });
   }
 
-  // Generate the Python Script
   const baseUrl = url.origin;
   
-  // Format the python script string
-  const pythonCode = `
-import os
-import csv
-import uuid
-import time
-import smtplib
-import requests
-import getpass
-from email.message import EmailMessage
-from email.utils import make_msgid
-from datetime import datetime
+  // Create Google Apps Script code
+  const appsScriptCode = `
+/**
+ * Prime Lead Pulse - Google Apps Script Sender
+ * Campaign: ${campaign.name}
+ * 
+ * INSTRUCTIONS:
+ * 1. Open your Google Sheet containing your contacts.
+ * 2. Make sure it has 'name' and 'email' columns.
+ * 3. Click Extensions > Apps Script in the menu.
+ * 4. Paste ALL of this code into the editor (replace any existing code).
+ * 5. Click the "Run" button at the top.
+ * 6. Google will ask you to authorize the script. Click "Review Permissions" -> Choose your account -> Click "Advanced" -> "Go to script (unsafe)" -> "Allow".
+ * 7. You can now close the tab. The script will run in the background!
+ */
 
-# ==========================================
-# Prime Lead Pulse - Campaign Sender
-# Campaign: ${campaign.name}
-# Generated on: ${new Date().toISOString()}
-# ==========================================
+var CAMPAIGN_ID = "${campaign.id}";
+var PLATFORM_API_URL = "${baseUrl}";
+var BATCH_SIZE = ${campaign.batch_size};
+var DELAY_SECONDS = ${campaign.delay_seconds};
+var EMAIL_SUBJECT = ${JSON.stringify(campaign.subject)};
+var EMAIL_BODY = ${JSON.stringify(campaign.body)};
 
-CAMPAIGN_ID = "${campaign.id}"
-PLATFORM_API_URL = "${baseUrl}"
+function startCampaign() {
+  // Check if a trigger already exists to prevent duplicates
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() == "processBatch") {
+      Logger.log("Campaign is already running in the background.");
+      return;
+    }
+  }
+  
+  Logger.log("Starting Campaign...");
+  
+  // Set up the sheet if needed (add a 'Status' column)
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var statusColIndex = headers.indexOf("Status");
+  if (statusColIndex === -1) {
+    sheet.getRange(1, sheet.getLastColumn() + 1).setValue("Status");
+  }
+  
+  // Start the first batch immediately
+  processBatch();
+}
 
-# User settings
-BATCH_SIZE = ${campaign.batch_size}
-DELAY_SECONDS = ${campaign.delay_seconds}
-CSV_EXPORT_URL = "${campaign.sheet_url}"
-
-EMAIL_SUBJECT = """${campaign.subject}"""
-EMAIL_BODY = """${campaign.body}"""
-
-def get_contacts():
-    print("Fetching contacts from Google Sheet...")
-    try:
-        url = CSV_EXPORT_URL
-        if "/edit" in url:
-            url = url.split("/edit")[0] + "/export?format=csv"
-            
-        response = requests.get(url)
-        response.raise_for_status()
-        
-        contacts = []
-        lines = response.text.splitlines()
-        reader = csv.reader(lines)
-        headers = next(reader, None)
-        
-        for row in reader:
-            if len(row) >= 2:
-                name = row[0].strip()
-                email = row[1].strip()
-                if name and email:
-                    contacts.append({"name": name, "email": email})
-        
-        print(f"Found {len(contacts)} contacts.")
-        return contacts
-    except Exception as e:
-        print(f"Error fetching Google Sheet: {e}")
-        print("Please ensure your Google Sheet link is set to 'Anyone with the link can view'.")
-        return []
-
-def register_email_and_get_pixel(sender_email, to_email, subject):
-    email_id = str(uuid.uuid4())
-    try:
-        payload = {
-            "campaign_id": CAMPAIGN_ID,
-            "sender_email": sender_email,
-            "recipient": to_email,
-            "subject": subject,
-            "email_id": email_id
+function processBatch() {
+  var startTime = new Date().getTime();
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  
+  var nameCol = headers.findIndex(function(h) { return h.toString().toLowerCase() === 'name'; });
+  var emailCol = headers.findIndex(function(h) { return h.toString().toLowerCase() === 'email'; });
+  var statusCol = headers.findIndex(function(h) { return h.toString().toLowerCase() === 'status'; });
+  
+  if (nameCol === -1 || emailCol === -1) {
+    Logger.log("Error: Could not find 'name' or 'email' columns.");
+    return;
+  }
+  
+  var emailsSentThisRun = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    // Check if we are approaching the 6-minute Google Apps Script timeout (stop at 4.5 minutes)
+    if (new Date().getTime() - startTime > 270000) {
+      Logger.log("Approaching time limit. Pausing and scheduling the next batch...");
+      scheduleNextBatch();
+      return;
+    }
+    
+    // Stop if we hit the batch limit
+    if (emailsSentThisRun >= BATCH_SIZE) {
+      Logger.log("Batch size limit reached. Campaign complete or scheduling next batch...");
+      // Depending on if you want it to send EVERYTHING in chunks, or just stop at batch limit
+      // Assuming batch limit is the TOTAL they want to send right now.
+      clearTriggers();
+      return;
+    }
+    
+    var row = data[i];
+    var status = statusCol !== -1 ? row[statusCol] : "";
+    
+    if (status !== "Sent") {
+      var name = row[nameCol];
+      var email = row[emailCol];
+      
+      if (name && email) {
+        var success = sendEmail(name, email);
+        if (success) {
+          if (statusCol !== -1) {
+            sheet.getRange(i + 1, statusCol + 1).setValue("Sent");
+          }
+          emailsSentThisRun++;
+          
+          if (emailsSentThisRun < BATCH_SIZE) {
+            Utilities.sleep(DELAY_SECONDS * 1000);
+          }
         }
-        res = requests.post(f"{PLATFORM_API_URL}/api/campaigns/register", json=payload)
-        if res.status_code == 200:
-            current_time = int(time.time() * 1000)
-            pixel_url = f"{PLATFORM_API_URL}/api/track/pixel/{email_id}?t={current_time}"
-            return f'<img src="{pixel_url}" width="1" height="1" alt="" style="display:none" />'
-        else:
-            print(f"  Warning: Failed to register tracking for {to_email}")
-            return ""
-    except Exception as e:
-        print(f"  Warning: Failed to generate pixel: {e}")
-        return ""
+      }
+    }
+  }
+  
+  Logger.log("Finished sending to all contacts in the sheet.");
+  clearTriggers();
+}
 
-def get_smtp_server(email):
-    email_lower = email.lower()
-    if "@gmail.com" in email_lower or "@diyflatfee.com" in email_lower:
-        return 'smtp.gmail.com', 465
-    elif "@secureserver.net" in email_lower or "godaddy" in email_lower:
-        return 'smtpout.secureserver.net', 465
-    elif "@yahoo.com" in email_lower:
-        return 'smtp.mail.yahoo.com', 465
-    elif "@outlook.com" in email_lower or "@hotmail.com" in email_lower:
-        return 'smtp.office365.com', 587
-    return 'smtp.gmail.com', 465
-
-def send_campaign():
-    print(f"=== Starting Campaign: {CAMPAIGN_ID} ===")
+function sendEmail(toName, toEmail) {
+  try {
+    var firstName = toName.split(' ')[0] || "";
+    var subject = EMAIL_SUBJECT.replace(/{name}/g, firstName).replace(/{first_name}/g, firstName);
+    var bodyHtml = EMAIL_BODY.replace(/{name}/g, firstName).replace(/{first_name}/g, firstName);
+    bodyHtml = bodyHtml.replace(/\\n/g, "<br>");
     
-    sender_email = input("Enter your email address: ").strip()
-    print("\\nNote: If using Gmail, you MUST use an App Password (not your regular password).")
-    print("Generate one at: https://myaccount.google.com/apppasswords")
-    app_password = getpass.getpass("Enter your App Password: ").strip()
+    var senderEmail = Session.getActiveUser().getEmail();
+    var pixelHtml = registerAndGetPixel(senderEmail, toEmail, subject);
     
-    if not sender_email or not app_password:
-        print("Email and password are required. Exiting.")
-        return
-
-    contacts = get_contacts()
-    if not contacts:
-        return
-        
-    contacts_to_send = contacts[:BATCH_SIZE]
-    print(f"\\nPreparing to send {len(contacts_to_send)} emails...")
+    bodyHtml = bodyHtml + "<br><br>" + pixelHtml;
     
-    try:
-        host, port = get_smtp_server(sender_email)
-        if port == 465:
-            server = smtplib.SMTP_SSL(host, port)
-        else:
-            server = smtplib.SMTP(host, port)
-            server.starttls()
-            
-        server.login(sender_email, app_password)
-        print("Successfully logged into SMTP!\\n")
-        
-        for i, contact in enumerate(contacts_to_send):
-            to_name = contact['name']
-            to_email = contact['email']
-            first_name = to_name.split()[0] if to_name else ""
-            
-            subject = EMAIL_SUBJECT.replace("{name}", first_name).replace("{first_name}", first_name)
-            body_html = EMAIL_BODY.replace("{name}", first_name).replace("{first_name}", first_name)
-            body_html = body_html.replace("\\n", "<br>")
-            
-            # Register in Supabase and inject pixel
-            pixel = register_email_and_get_pixel(sender_email, to_email, subject)
-            body_html = f"{body_html}<br><br>{pixel}"
-            
-            msg = EmailMessage()
-            msg['Subject'] = subject
-            msg['From'] = sender_email
-            msg['To'] = to_email
-            msg['Message-ID'] = make_msgid()
-            msg.set_content("Please enable HTML to view this email.")
-            msg.add_alternative(body_html, subtype='html')
-            
-            try:
-                server.send_message(msg)
-                print(f"[{i+1}/{len(contacts_to_send)}] Sent to {to_name} <{to_email}>")
-            except Exception as e:
-                print(f"[{i+1}/{len(contacts_to_send)}] Failed to send to {to_email}: {e}")
-            
-            if i < len(contacts_to_send) - 1:
-                print(f"Waiting {DELAY_SECONDS} seconds...")
-                time.sleep(DELAY_SECONDS)
-                
-        server.quit()
-        print("\\n=== Campaign Sending Complete! ===")
-        
-    except smtplib.SMTPAuthenticationError:
-        print("\\nERROR: Invalid email or App Password.")
-    except Exception as e:
-        print(f"\\nERROR: An unexpected error occurred: {e}")
+    MailApp.sendEmail({
+      to: toEmail,
+      subject: subject,
+      htmlBody: bodyHtml
+    });
+    
+    Logger.log("Sent to " + toEmail);
+    return true;
+  } catch (e) {
+    Logger.log("Failed to send to " + toEmail + ": " + e.toString());
+    return false;
+  }
+}
 
-if __name__ == "__main__":
-    try:
-        import requests
-    except ImportError:
-        print("Required package 'requests' is not installed.")
-        print("Please run: pip install requests")
-        exit(1)
-    send_campaign()
+function registerAndGetPixel(senderEmail, toEmail, subject) {
+  var emailId = Utilities.getUuid();
+  var payload = {
+    "campaign_id": CAMPAIGN_ID,
+    "sender_email": senderEmail,
+    "recipient": toEmail,
+    "subject": subject,
+    "email_id": emailId
+  };
+  
+  var options = {
+    'method' : 'post',
+    'contentType': 'application/json',
+    'payload' : JSON.stringify(payload),
+    'muteHttpExceptions': true
+  };
+  
+  try {
+    var response = UrlFetchApp.fetch(PLATFORM_API_URL + "/api/campaigns/register", options);
+    if (response.getResponseCode() == 200) {
+      var currentTime = new Date().getTime();
+      var pixelUrl = PLATFORM_API_URL + "/api/track/pixel/" + emailId + "?t=" + currentTime;
+      return '<img src="' + pixelUrl + '" width="1" height="1" alt="" style="display:none" />';
+    }
+  } catch (e) {
+    Logger.log("Failed to register pixel for " + toEmail);
+  }
+  return "";
+}
+
+function scheduleNextBatch() {
+  clearTriggers();
+  ScriptApp.newTrigger("processBatch")
+    .timeBased()
+    .after(60000) // 1 minute from now
+    .create();
+}
+
+function clearTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() == "processBatch") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+}
 `;
 
-  return new NextResponse(pythonCode, {
+  return new NextResponse(appsScriptCode, {
     status: 200,
     headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="plp_campaign_${campaign.id.split('-')[0]}.py"`,
+      'Content-Type': 'text/plain',
+      'Content-Disposition': `attachment; filename="plp_campaign_${campaign.id.split('-')[0]}.txt"`,
     },
   });
+}
+
+async function campaignQuery(id: string, userId: string) {
+    return supabase.from('campaigns').select('*').eq('id', id).eq('user_id', userId).single();
 }
