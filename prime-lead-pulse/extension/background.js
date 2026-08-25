@@ -1,3 +1,13 @@
+// ============================================================
+// Prime Lead Pulse — Background Service Worker (v3)
+// Fixes:
+//  - Mutex lock on pollForNotifications prevents race-condition notification spam
+//  - Reduced alarm frequency
+//  - Smarter notification deduplication
+// ============================================================
+
+let isPolling = false; // Mutex lock to prevent concurrent polls
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'CREATE_EMAIL') {
     (async () => {
@@ -70,16 +80,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   }
-
-  if (request.action === 'CHECK_NOTIFICATIONS') {
-    pollForNotifications();
-    sendResponse({ success: true });
-    return false; // Sync response
-  }
 });
 
 // ------ Notification Polling ------
-chrome.alarms.create("pollStats", { periodInMinutes: 0.25 }); // every 15 seconds approx (alarms might be delayed by Chrome)
+// Poll every 30 seconds (alarms have a minimum of ~30s in MV3)
+chrome.alarms.create("pollStats", { periodInMinutes: 0.5 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "pollStats") {
@@ -90,14 +95,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 pollForNotifications(); // Initial cache population
 
 async function pollForNotifications() {
-  const { session, apiUrl, knownEventIds } = await chrome.storage.local.get(['session', 'apiUrl', 'knownEventIds']);
-  if (!session || !apiUrl) return;
-
-  const base = apiUrl.replace(/\/$/, '');
-  const currentKnownIds = new Set(knownEventIds || []);
-  let hasNewEvents = false;
+  // MUTEX LOCK: If another poll is already running, skip this one.
+  // This prevents the race condition where two polls read the same knownEventIds
+  // and both fire notifications for the same events.
+  if (isPolling) return;
+  isPolling = true;
 
   try {
+    const { session, apiUrl, knownEventIds } = await chrome.storage.local.get(['session', 'apiUrl', 'knownEventIds']);
+    if (!session || !apiUrl) return;
+
+    const base = apiUrl.replace(/\/$/, '');
+    const currentKnownIds = new Set(knownEventIds || []);
+    const newEventsToNotify = []; // Collect all new events first, then batch-notify
+
     const res = await fetch(`${base}/api/emails`, {
       headers: { 'Authorization': `Bearer ${session.access_token}` }
     });
@@ -109,42 +120,62 @@ async function pollForNotifications() {
       for (const ev of email.tracking_events) {
         if (!currentKnownIds.has(ev.id)) {
           currentKnownIds.add(ev.id);
-          hasNewEvents = true;
 
           // Only notify if we already had known events (prevents spam on first ever load)
           if (knownEventIds && knownEventIds.length > 0) {
-            const isClick = ev.event_type === 'click';
-            const title = isClick ? 'Link Clicked' : 'Email Opened';
-            const recipient = email.recipient || 'Unknown Recipient';
-            const isMultiple = recipient.includes(',');
-            
-            let message;
-            if (isMultiple) {
-              message = isClick 
-                ? `Someone clicked a link in your email to ${recipient} - "${email.subject}"` 
-                : `Someone opened your email to ${recipient} - "${email.subject}"`;
-            } else {
-              message = isClick 
-                ? `${recipient} clicked a link in your email - "${email.subject}"` 
-                : `${recipient} opened your email - "${email.subject}"`;
-            }
-              
-            chrome.notifications.create(ev.id, {
-              type: 'basic',
-              iconUrl: 'icon.gif',
-              title,
-              message,
-              priority: 2
-            });
+            newEventsToNotify.push({ ev, email });
           }
         }
       }
     }
 
-    if (hasNewEvents) {
-      await chrome.storage.local.set({ knownEventIds: Array.from(currentKnownIds) });
+    // Save updated known IDs BEFORE sending notifications to prevent race
+    await chrome.storage.local.set({ knownEventIds: Array.from(currentKnownIds) });
+
+    // Now send notifications for genuinely new events
+    // Group by email to avoid notification spam (e.g. 10 bot clicks on the same email)
+    const grouped = {};
+    for (const { ev, email } of newEventsToNotify) {
+      const key = `${email.id}_${ev.event_type}`;
+      if (!grouped[key]) {
+        grouped[key] = { email, eventType: ev.event_type, count: 0 };
+      }
+      grouped[key].count++;
     }
+
+    for (const key of Object.keys(grouped)) {
+      const { email, eventType, count } = grouped[key];
+      const isClick = eventType === 'click';
+      const title = isClick ? 'Link Clicked' : 'Email Opened';
+      const recipient = email.recipient || 'Unknown Recipient';
+      const isMultiple = recipient.includes(',');
+      
+      let message;
+      if (isMultiple) {
+        message = isClick 
+          ? `Someone clicked a link in your email to ${recipient} - "${email.subject}"` 
+          : `Someone opened your email to ${recipient} - "${email.subject}"`;
+      } else {
+        message = isClick 
+          ? `${recipient} clicked a link in your email - "${email.subject}"` 
+          : `${recipient} opened your email - "${email.subject}"`;
+      }
+      if (count > 1) {
+        message += ` (${count} times)`;
+      }
+        
+      chrome.notifications.create(`${key}_${Date.now()}`, {
+        type: 'basic',
+        iconUrl: 'icon.gif',
+        title,
+        message,
+        priority: 2
+      });
+    }
+
   } catch (err) {
     console.error('Polling error:', err);
+  } finally {
+    isPolling = false; // Always release the lock
   }
 }

@@ -1,11 +1,9 @@
 // ============================================================
-// Prime Lead Pulse — Gmail Content Script (v2)
-// Features:
-//  1. Inject "Track this email" toggle in compose window
-//  2. Intercept Send to embed pixel + rewrite links
-//  3. Sent folder: inject "Untracked / Opened Nx / Clicked Nx" badges
-//  4. Email view: inject right-side panel with Opens, Clicks, Timeline
-//  5. Thread view: inject "View Activity (N)" button
+// Prime Lead Pulse — Gmail Content Script (v3)
+// Fixes:
+//  - Duplicate button injection (check DOM, not dataset)
+//  - Reduced polling (15s instead of 3s)
+//  - Removed redundant CHECK_NOTIFICATIONS (background alarm handles it)
 // ============================================================
 
 const PRIME_STYLE_ID = 'prime-lead-pulse-styles';
@@ -363,7 +361,10 @@ function injectEmailViewFeatures() {
 
 // ------ Compose Window Injection ------
 function injectComposeTool(composeWindow) {
-  if (composeWindow.dataset.plpInjected) return;
+  // FIX: Check for existing toolbar in the DOM instead of dataset flag.
+  // Gmail can match both div[role="dialog"] and nested .M9 for the same compose.
+  // This prevents double injection.
+  if (composeWindow.querySelector('.plp-compose-toolbar')) return;
 
   const sendBtn = composeWindow.querySelector('div[aria-label^="Send"]');
   if (!sendBtn) return; 
@@ -372,10 +373,9 @@ function injectComposeTool(composeWindow) {
   const bottomTable = sendBtn.closest('table');
   if (!bottomTable) return;
 
-  composeWindow.dataset.plpInjected = 'true';
-
   // Create a completely separate row (div) for our tools
   const container = document.createElement('div');
+  container.className = 'plp-compose-toolbar'; // Used for duplicate detection
   container.style.cssText = 'display:flex;align-items:center;padding:8px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;gap:16px;margin-bottom:4px;border-radius:4px;';
 
   // "Use Template" Button
@@ -547,16 +547,15 @@ const observer = new MutationObserver(() => {
 
 observer.observe(document.body, { childList: true, subtree: true });
 
-// ------ Instant Notifications Loop ------
-// Wake up the background worker and update stats every 3 seconds!
+// ------ Stats Polling (reduced from 3s to 15s) ------
+// Background.js alarm handles notifications independently, so we only need to refresh badge UI here.
 setInterval(() => {
-  chrome.runtime.sendMessage({ action: 'CHECK_NOTIFICATIONS' });
   const senderEmail = getActiveSenderEmail();
   fetchEmailStats(senderEmail).then(() => {
     injectSentBadges();
     injectEmailViewFeatures();
   });
-}, 3000);
+}, 15000);
 
 // Initial load
 const senderEmail = getActiveSenderEmail();
@@ -565,4 +564,4 @@ fetchEmailStats(senderEmail).then(() => {
   injectEmailViewFeatures();
 });
 
-console.log('Prime Lead Pulse: Content script v2 loaded.');
+console.log('Prime Lead Pulse: Content script v3 loaded.');

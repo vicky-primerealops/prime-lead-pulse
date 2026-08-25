@@ -7,6 +7,27 @@ const PIXEL_BUFFER = Buffer.from(
   'base64'
 );
 
+const PIXEL_HEADERS = {
+  'Content-Type': 'image/png',
+  'Content-Length': PIXEL_BUFFER.length.toString(),
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
+// Known bot/scanner user-agent patterns (these are NOT real humans opening emails)
+function isLikelyBot(userAgent: string): boolean {
+  // Bare "Mozilla/5.0" with no browser info = corporate security scanner
+  if (userAgent.trim() === 'Mozilla/5.0') return true;
+  const botPatterns = [
+    /bot/i, /crawler/i, /spider/i, /slurp/i,
+    /barracuda/i, /proofpoint/i, /mimecast/i, /fireeye/i,
+    /fortinet/i, /sophos/i, /symantec/i, /mcafee/i,
+    /ZmEu/i, /Nmap/i, /sqlmap/i,
+  ];
+  return botPatterns.some(p => p.test(userAgent));
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -19,42 +40,35 @@ export async function GET(
   const tParam = url.searchParams.get('t');
 
   try {
-    // 1. Fetch the email to check its creation time
+    // 1. BOT FILTER: Check user-agent
+    if (isLikelyBot(userAgent)) {
+      return new NextResponse(PIXEL_BUFFER, { status: 200, headers: PIXEL_HEADERS });
+    }
+
+    // 2. Fetch the email to check its creation time
     const { data: emailData } = await supabase
       .from('emails')
       .select('created_at')
       .eq('id', emailId)
       .single();
 
-    // 2. BOT FILTER: Ignore opens that happen within 120 seconds of sending
-    // If a 't' parameter (timestamp) was passed in the URL (e.g. from Python bulk senders), use that.
-    // Otherwise, fallback to the database creation time.
+    // 3. BOT FILTER: Ignore opens within 120 seconds of sending
     if (emailData) {
       const sendTimeMs = tParam ? parseInt(tParam, 10) : new Date(emailData.created_at).getTime();
       const emailAgeMs = Date.now() - sendTimeMs;
       if (emailAgeMs < 120000) {
-        // Return the pixel but DO NOT log the event
-        return new NextResponse(PIXEL_BUFFER, {
-          status: 200,
-          headers: {
-            'Content-Type': 'image/png',
-            'Content-Length': PIXEL_BUFFER.length.toString(),
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          },
-        });
+        return new NextResponse(PIXEL_BUFFER, { status: 200, headers: PIXEL_HEADERS });
       }
     }
 
-    // 3. Debounce: prevent duplicate opens within 5 seconds
-    const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
+    // 4. DEBOUNCE: Prevent duplicate opens within 30 seconds (was 5s, too short)
+    const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString();
     const { data: recentOpens } = await supabase
       .from('tracking_events')
       .select('id')
       .eq('email_id', emailId)
       .eq('event_type', 'open')
-      .gte('created_at', fiveSecondsAgo)
+      .gte('created_at', thirtySecondsAgo)
       .limit(1);
 
     if (!recentOpens || recentOpens.length === 0) {
@@ -67,19 +81,7 @@ export async function GET(
     }
   } catch (error) {
     console.error('Error logging pixel open:', error);
-    // Even if it fails, we still want to return the pixel so the email doesn't break
   }
 
-  // Return the invisible pixel
-  return new NextResponse(PIXEL_BUFFER, {
-    status: 200,
-    headers: {
-      'Content-Type': 'image/png',
-      'Content-Length': PIXEL_BUFFER.length.toString(),
-      // Extremely important: prevent Gmail from caching the pixel, or opens will only be logged once!
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-    },
-  });
+  return new NextResponse(PIXEL_BUFFER, { status: 200, headers: PIXEL_HEADERS });
 }
