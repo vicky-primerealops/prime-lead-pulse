@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 
 import { useDashboardData } from '@/hooks/useDashboardData';
 import DashboardLayout from '@/components/DashboardLayout';
+import Link from 'next/link';
 import HighInterest from '@/components/HighInterest';
 import RecentActivity from '@/components/RecentActivity';
 import ActivityTrends from '@/components/ActivityTrends';
@@ -238,15 +239,15 @@ export default function DashboardPage() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-slate-100/50 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="flex justify-between items-center mb-8 relative z-10">
             <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Email Templates</h2>
-            <button className="text-[12px] font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">
+            <Link href="/dashboard/templates" className="text-[12px] font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">
               View All <TrendingUp size={14} />
-            </button>
+            </Link>
           </div>
           <div className="text-center py-10 relative z-10">
             <p className="text-[13px] text-slate-400 font-medium">No email templates yet</p>
-            <button className="mt-3 text-[12px] font-bold text-slate-900 hover:text-indigo-600 transition-colors">
+            <Link href="/dashboard/templates" className="inline-block mt-3 text-[12px] font-bold text-slate-900 hover:text-indigo-600 transition-colors">
               Create your first email template
-            </button>
+            </Link>
           </div>
         </div>
 
