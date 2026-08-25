@@ -175,9 +175,9 @@ function findEmailBySubject(subject) {
 }
 
 // ------ API Calls via background ------
-async function fetchEmailStats(senderEmail) {
+async function fetchEmailStats() {
   return new Promise(resolve => {
-    chrome.runtime.sendMessage({ action: 'GET_STATS', senderEmail }, response => {
+    chrome.runtime.sendMessage({ action: 'GET_STATS' }, response => {
       if (response && response.success) {
         // Build enriched cache
         emailCache = response.data.emails.map(email => {
@@ -550,16 +550,14 @@ observer.observe(document.body, { childList: true, subtree: true });
 // ------ Stats Polling (reduced from 3s to 15s) ------
 // Background.js alarm handles notifications independently, so we only need to refresh badge UI here.
 setInterval(() => {
-  const senderEmail = getActiveSenderEmail();
-  fetchEmailStats(senderEmail).then(() => {
+  fetchEmailStats().then(() => {
     injectSentBadges();
     injectEmailViewFeatures();
   });
 }, 15000);
 
 // Initial load
-const senderEmail = getActiveSenderEmail();
-fetchEmailStats(senderEmail).then(() => {
+fetchEmailStats().then(() => {
   injectSentBadges();
   injectEmailViewFeatures();
 });
