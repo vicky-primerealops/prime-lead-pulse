@@ -34,6 +34,7 @@ export interface ProcessedEmail {
 
 export function useDashboardData() {
   const [emails, setEmails] = useState<ProcessedEmail[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
@@ -73,6 +74,15 @@ export function useDashboardData() {
         });
         setEmails(processed);
       }
+
+      // Fetch templates
+      const tplRes = await fetch('/api/templates', {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (tplRes.ok) {
+        const tplData = await tplRes.json();
+        setTemplates(tplData.templates || []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -105,5 +115,5 @@ export function useDashboardData() {
     }
   };
 
-  return { emails, loading, user, logout, deleteEmail, supabase };
+  return { emails, templates, loading, user, logout, deleteEmail, supabase };
 }

@@ -73,7 +73,7 @@ function getTimeToOpenLabel(ms: number) {
 }
 
 export default function DashboardPage() {
-  const { emails, loading, user, logout } = useDashboardData();
+  const { emails, templates, loading, user, logout } = useDashboardData();
 
   if (loading) {
     return (
@@ -237,17 +237,33 @@ export default function DashboardPage() {
         {/* Templates Section */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-slate-100/50 to-transparent rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="flex justify-between items-center mb-8 relative z-10">
+          <div className="flex justify-between items-center mb-6 relative z-10">
             <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Email Templates</h2>
             <Link href="/dashboard/templates" className="text-[12px] font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">
               View All <TrendingUp size={14} />
             </Link>
           </div>
-          <div className="text-center py-10 relative z-10">
-            <p className="text-[13px] text-slate-400 font-medium">No email templates yet</p>
-            <Link href="/dashboard/templates" className="inline-block mt-3 text-[12px] font-bold text-slate-900 hover:text-indigo-600 transition-colors">
-              Create your first email template
-            </Link>
+          <div className="relative z-10">
+            {(!templates || templates.length === 0) ? (
+              <div className="text-center py-10">
+                <p className="text-[13px] text-slate-400 font-medium">No email templates yet</p>
+                <Link href="/dashboard/templates" className="inline-block mt-3 text-[12px] font-bold text-slate-900 hover:text-indigo-600 transition-colors">
+                  Create your first email template
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {templates.slice(0, 3).map(t => (
+                  <Link key={t.id} href="/dashboard/templates" className="block bg-slate-50 border border-slate-100 rounded-xl p-4 hover:bg-slate-100 hover:border-slate-200 transition-colors cursor-pointer group/item">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-bold text-slate-900 text-sm group-hover/item:text-indigo-600 transition-colors">{t.name}</h3>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">{t.subject || 'No subject'}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
