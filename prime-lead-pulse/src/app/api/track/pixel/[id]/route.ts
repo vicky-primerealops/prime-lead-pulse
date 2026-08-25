@@ -14,6 +14,9 @@ export async function GET(
   const { id: emailId } = await params;
   const userAgent = request.headers.get('user-agent') || 'Unknown';
   const ipAddress = request.headers.get('x-forwarded-for') || 'Unknown';
+  
+  const url = new URL(request.url);
+  const tParam = url.searchParams.get('t');
 
   try {
     // 1. Fetch the email to check its creation time
@@ -24,8 +27,11 @@ export async function GET(
       .single();
 
     // 2. BOT FILTER: Ignore opens that happen within 120 seconds of sending
+    // If a 't' parameter (timestamp) was passed in the URL (e.g. from Python bulk senders), use that.
+    // Otherwise, fallback to the database creation time.
     if (emailData) {
-      const emailAgeMs = Date.now() - new Date(emailData.created_at).getTime();
+      const sendTimeMs = tParam ? parseInt(tParam, 10) : new Date(emailData.created_at).getTime();
+      const emailAgeMs = Date.now() - sendTimeMs;
       if (emailAgeMs < 120000) {
         // Return the pixel but DO NOT log the event
         return new NextResponse(PIXEL_BUFFER, {
