@@ -136,6 +136,10 @@ async function pollForNotifications() {
     // Group by email to avoid notification spam (e.g. 10 bot clicks on the same email)
     const grouped = {};
     for (const { ev, email } of newEventsToNotify) {
+      // Prevent flood of old notifications if computer was asleep or token was expired
+      const eventTime = new Date(ev.created_at).getTime();
+      if (Date.now() - eventTime > 10 * 60 * 1000) continue; 
+
       const key = `${email.id}_${ev.event_type}`;
       if (!grouped[key]) {
         grouped[key] = { email, eventType: ev.event_type, count: 0 };
