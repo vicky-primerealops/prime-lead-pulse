@@ -22,7 +22,6 @@ if (!document.getElementById(PRIME_STYLE_ID)) {
       font-weight: 600 !important;
       margin-right: 6px !important;
       white-space: nowrap !important;
-      z-index: 9999 !important;
       visibility: visible !important;
       opacity: 1 !important;
     }
