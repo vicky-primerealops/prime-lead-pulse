@@ -153,17 +153,27 @@ def process_inbox_and_spam(account, all_emails):
                 status, messages = mail.search(None, f'(FROM "{sender}")')
                 if status == "OK" and messages[0]:
                     nums = messages[0].split()
-                    if nums:
-                        log.info(f"[{email_addr}] Found {len(nums)} warmup emails in SPAM. Moving to Inbox...")
+                    moved_count = 0
                     for num in nums:
-                        mail.copy(num, "INBOX")
-                        mail.store(num, '+FLAGS', '\\Deleted')
+                        typ, data = mail.fetch(num, '(BODY.PEEK[HEADER.FIELDS (X-WARMUP-EMAIL)])')
+                        if typ == "OK":
+                            raw_email = data[0][1]
+                            msg = email.message_from_bytes(raw_email)
+                            x_warmup = msg.get("X-Warmup-Email", "")
+                            if x_warmup.strip().lower() == "true":
+                                mail.copy(num, "INBOX")
+                                mail.store(num, '+FLAGS', '\\Deleted')
+                                moved_count += 1
+                    if moved_count > 0:
+                        log.info(f"[{email_addr}] Found {moved_count} warmup emails in SPAM. Moved to Inbox...")
             mail.expunge()
         
         # 2. Reply to unread warmup emails
+        # Define a limit for how many emails to reply to per session
+        max_replies = random.randint(12, 18)
+        
         mail.select("INBOX")
         replies_sent = 0
-        max_replies = random.randint(8, 10)
         
         for sender in all_emails:
             if sender == email_addr: continue
@@ -173,9 +183,18 @@ def process_inbox_and_spam(account, all_emails):
                 nums = messages[0].split()
                 for num in nums:
                     if replies_sent < max_replies: # Limit replies per account per run to avoid spamming
-                        typ, data = mail.fetch(num, '(RFC822)')
+                        typ, data = mail.fetch(num, '(BODY.PEEK[HEADER.FIELDS (SUBJECT MESSAGE-ID X-WARMUP-EMAIL)])')
+                        if typ != "OK": continue
+                        
                         raw_email = data[0][1]
                         msg = email.message_from_bytes(raw_email)
+                        
+                        x_warmup = msg.get("X-Warmup-Email", "")
+                        if x_warmup.strip().lower() != "true":
+                            # This is a real email (e.g. CC'd from another account), NOT a warmup email!
+                            # Leave it alone, don't reply, don't mark as seen.
+                            continue
+                            
                         msg_id = msg.get("Message-ID")
                         subject = msg.get("Subject", "")
                         if not subject.lower().startswith("re:"):
@@ -184,10 +203,10 @@ def process_inbox_and_spam(account, all_emails):
                         # Send Reply
                         send_reply(account, sender, subject, msg_id)
                         replies_sent += 1
-                        time.sleep(random.randint(15, 30))
                         
-                    # Mark as read
-                    mail.store(num, '+FLAGS', '\\Seen')
+                        # Mark as read ONLY if it's a warmup email
+                        mail.store(num, '+FLAGS', '\\Seen')
+                        time.sleep(random.randint(15, 30))
                     
         mail.close()
         mail.logout()
@@ -219,7 +238,8 @@ def send_new_emails(account, all_emails):
     sender_pass = account["password"]
     server_info = get_server_info(sender_email)
     
-    num_to_send = random.randint(12, 18)
+    # Define how many total new emails this account will initiate
+    num_to_send = random.randint(20, 30)
     possible_receivers = [e for e in all_emails if e != sender_email]
     num_to_send = min(num_to_send, len(possible_receivers))
     receivers = random.sample(possible_receivers, num_to_send)

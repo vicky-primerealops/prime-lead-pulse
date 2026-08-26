@@ -63,8 +63,8 @@ def load_senders(filename="warmup_accounts.csv"):
                 e = row.get("Email", "").strip()
                 p = row.get("AppPassword", "").strip()
                 if e and p:
-                    # Exclude the specific email requested
-                    if e.lower() != "vickythakkar6143@gmail.com":
+                    # Exclude the specific emails requested
+                    if not any(x in e.lower() for x in ["vickythakkar6143", "diyflatfee", "info@primerealops"]):
                         accounts.append({"email": e, "password": p})
     except Exception as e:
         log.error(f"Error loading {filename}: {e}")
@@ -78,7 +78,7 @@ def main():
         log.error("No sender accounts loaded.")
         return
         
-    log.info(f"Loaded {len(senders)} senders (vickythakkar6143 excluded).")
+    log.info(f"Loaded {len(senders)} senders (vickythakkar6143, diyflatfee, info@primerealops excluded).")
     
     # Removing duplicates (like mishtisabby@gmail.com which appeared twice)
     unique_friends = list(set(FRIENDS_EMAILS))
