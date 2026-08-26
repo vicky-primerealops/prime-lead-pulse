@@ -14,18 +14,22 @@ if (!document.getElementById(PRIME_STYLE_ID)) {
   style.id = PRIME_STYLE_ID;
   style.textContent = `
     .plp-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-right: 6px;
-      white-space: nowrap;
+      display: inline-flex !important;
+      align-items: center !important;
+      padding: 2px 8px !important;
+      border-radius: 999px !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      margin-right: 6px !important;
+      white-space: nowrap !important;
+      z-index: 9999 !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
-    .plp-badge-untracked { background: #f3f4f6; color: #6b7280; }
-    .plp-badge-opened { background: #d1fae5; color: #065f46; }
-    .plp-badge-clicked { background: #c7d2fe; color: #3730a3; }
+    .plp-badge-untracked { background: #f3f4f6 !important; color: #6b7280 !important; border: 1px solid #d1d5db !important; }
+    .plp-badge-opened { background: #d1fae5 !important; color: #065f46 !important; border: 1px solid #6ee7b7 !important; }
+    .plp-badge-clicked { background: #c7d2fe !important; color: #3730a3 !important; border: 1px solid #a5b4fc !important; }
+    .plp-badge-unopened { background: #fef08a !important; color: #854d0e !important; border: 1px solid #fde047 !important; }
 
     .plp-panel {
       position: fixed;
@@ -198,22 +202,23 @@ async function fetchEmailStats() {
   });
 }
 
-// ------ Sent Folder Badge Injection ------
+/// ------ Sent Folder Badge Injection ------
 function injectSentBadges() {
-    const emailRows = document.querySelectorAll('tr.zA');
-    emailRows.forEach(row => {
-      // Find the recipient name/email column
-      const recipientSpan = row.querySelector('.yP, .zF');
+  const emailRows = document.querySelectorAll('tr.zA');
+  if (emailRows.length > 0) {
+    console.log(`Prime Lead Pulse: Found ${emailRows.length} email rows, attempting to inject badges...`);
+  }
+
+  emailRows.forEach(row => {
+    try {
+      const recipientSpan = row.querySelector('.yP, .zF, [email], span[name]');
       if (!recipientSpan) return;
-      const recipientEmail = recipientSpan.getAttribute('email') || recipientSpan.textContent;
-  
-      // Prefer innermost spans to avoid picking up body snippets in the subject line
-      const subjectEl = row.querySelector('span[data-thread-id], span.bqe, .bog');
+      const recipientEmail = recipientSpan.getAttribute('email') || recipientSpan.textContent || '';
+
+      const subjectEl = row.querySelector('span[data-thread-id], span.bqe, .bog, .y6');
       if (!subjectEl) return;
-  
-      // We no longer split by ' - ' because findEmail handles prefix matching perfectly!
+
       let subject = subjectEl.textContent.trim();
-      
       const record = findEmail(subject, recipientEmail);
 
       let badge = row.querySelector('.plp-badge');
@@ -224,7 +229,6 @@ function injectSentBadges() {
         badge.dataset.plpBadge = 'true';
       }
       
-      // Reset classes
       badge.className = 'plp-badge';
   
       if (!record) {
@@ -244,31 +248,38 @@ function injectSentBadges() {
       if (isNew) {
         const senderEl = row.querySelector('.yW');
         if (senderEl) {
-          // Insert inside the .yW container so it doesn't break table cell layouts
           senderEl.insertBefore(badge, senderEl.firstChild);
         } else {
-          subjectEl.parentElement.insertBefore(badge, subjectEl);
+          // Absolute fallback if .yW is missing
+          const titleCell = row.querySelector('td.xY.a4W');
+          if (titleCell) {
+            titleCell.insertBefore(badge, titleCell.firstChild);
+          } else {
+            subjectEl.parentElement.insertBefore(badge, subjectEl);
+          }
         }
       }
 
-    badge.style.cursor = 'pointer';
-    badge.onclick = (e) => {
-      e.stopPropagation(); // prevent Gmail from opening the email
-      
-      // Extract basic info from the list view row for the panel
-      let to = 'Unknown';
-      if (senderEl) {
-        const clone = senderEl.cloneNode(true);
-        const b = clone.querySelector('.plp-badge');
-        if (b) b.remove();
-        to = clone.textContent.trim();
-      }
-      
-      const dateEl = row.querySelector('.xW.xY span');
-      const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
-      
-      showPanel(record, subject, to, sentDate);
-    };
+      badge.style.cursor = 'pointer';
+      badge.onclick = (e) => {
+        e.stopPropagation();
+        let to = 'Unknown';
+        const senderEl = row.querySelector('.yW');
+        if (senderEl) {
+          const clone = senderEl.cloneNode(true);
+          const b = clone.querySelector('.plp-badge');
+          if (b) b.remove();
+          to = clone.textContent.trim();
+        }
+        
+        const dateEl = row.querySelector('.xW.xY span');
+        const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
+        
+        showPanel(record || { recipient: recipientEmail, subject, status: 'Untracked', opens: 0, clicks: 0, events: [] }, subject, to, sentDate);
+      };
+    } catch (err) {
+      console.error('Prime Lead Pulse: Error injecting badge for row', err);
+    }
   });
 }
 
