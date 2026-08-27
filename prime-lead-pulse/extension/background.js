@@ -8,6 +8,37 @@
 
 let isPolling = false; // Mutex lock to prevent concurrent polls
 
+// Helper to fetch with automatic token refresh
+async function fetchWithAuth(url, options, session, apiUrl) {
+  let res = await fetch(url, options);
+  
+  if (res.status === 401 && session.refresh_token) {
+    // Attempt to refresh the token
+    const base = apiUrl.replace(/\/$/, '');
+    const refreshRes = await fetch(`${base}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: session.refresh_token })
+    });
+    
+    if (refreshRes.ok) {
+      const refreshData = await refreshRes.json();
+      if (refreshData.success) {
+        // Save new session
+        await chrome.storage.local.set({ session: refreshData.session });
+        
+        // Update authorization header and retry original request
+        options.headers['Authorization'] = `Bearer ${refreshData.session.access_token}`;
+        res = await fetch(url, options);
+      }
+    } else {
+      // If refresh fails, log them out
+      await chrome.storage.local.remove('session');
+    }
+  }
+  return res;
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'CREATE_EMAIL') {
     (async () => {
@@ -16,14 +47,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (!session || !apiUrl) throw new Error('Not logged in');
 
         const base = apiUrl.replace(/\/$/, '');
-        const res = await fetch(`${base}/api/emails`, {
+        const res = await fetchWithAuth(`${base}/api/emails`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify(request.payload)
-        });
+        }, session, apiUrl);
 
         const data = await res.json();
         sendResponse({ success: res.ok, data });
@@ -42,12 +73,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         const base = apiUrl.replace(/\/$/, '');
         const query = request.senderEmail ? `?sender_email=${encodeURIComponent(request.senderEmail)}` : '';
-        const res = await fetch(`${base}/api/emails${query}`, {
+        const res = await fetchWithAuth(`${base}/api/emails${query}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
-        });
+        }, session, apiUrl);
 
         const data = await res.json();
         sendResponse({ success: res.ok, data });
@@ -65,12 +96,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (!session || !apiUrl) throw new Error('Not logged in');
 
         const base = apiUrl.replace(/\/$/, '');
-        const res = await fetch(`${base}/api/templates`, {
+        const res = await fetchWithAuth(`${base}/api/templates`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
-        });
+        }, session, apiUrl);
 
         const data = await res.json();
         sendResponse({ success: res.ok, data });
