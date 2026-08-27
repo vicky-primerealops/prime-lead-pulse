@@ -62,7 +62,7 @@ export async function GET(
     if (emailData) {
       const sendTimeMs = tParam ? parseInt(tParam, 10) : new Date(emailData.created_at).getTime();
       const emailAgeMs = Date.now() - sendTimeMs;
-      if (emailAgeMs < 120000) {
+      if (emailAgeMs < 90000) {
         return new NextResponse(PIXEL_BUFFER, { status: 200, headers: PIXEL_HEADERS });
       }
     }
