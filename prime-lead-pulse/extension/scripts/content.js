@@ -189,11 +189,14 @@ function findEmail(subject, recipientEmail) {
 }
 
 // ------ API Calls via background ------
+let statsError = null;
+
 async function fetchEmailStats() {
   const senderEmail = getActiveSenderEmail();
   return new Promise(resolve => {
     chrome.runtime.sendMessage({ action: 'GET_STATS', senderEmail }, response => {
       if (response && response.success) {
+        statsError = null;
         // Build enriched cache
         emailCache = response.data.emails.map(email => {
           const opens = (email.tracking_events || []).filter(e => e.event_type === 'open');
@@ -204,7 +207,8 @@ async function fetchEmailStats() {
           return { ...email, opens: opens.length, clicks: clicks.length, status, events: email.tracking_events || [] };
         });
       } else {
-        console.error('Prime Lead Pulse: Failed to fetch stats.', response?.error);
+        statsError = response?.error || 'Failed to connect';
+        console.error('Prime Lead Pulse: Failed to fetch stats.', statsError);
       }
       resolve(); // Always resolve so UI still initializes
     });
@@ -214,8 +218,9 @@ async function fetchEmailStats() {
 /// ------ Sent Folder Badge Injection ------
 function injectSentBadges() {
   const emailRows = document.querySelectorAll('tr.zA');
-  if (emailRows.length > 0) {
+  if (emailRows.length > 0 && !window.hasLoggedBadgeAttempt) {
     console.log(`Prime Lead Pulse: Found ${emailRows.length} email rows, attempting to inject badges...`);
+    window.hasLoggedBadgeAttempt = true;
   }
 
   emailRows.forEach(row => {
@@ -241,18 +246,26 @@ function injectSentBadges() {
       
       badge.className = 'plp-badge';
   
-      if (!record) {
+      if (statsError) {
+        badge.className += ' plp-badge-untracked';
+        badge.textContent = 'Auth Error';
+        badge.title = statsError;
+      } else if (!record) {
         badge.className += ' plp-badge-untracked';
         badge.textContent = 'Untracked';
+        badge.title = '';
       } else if (record.clicks > 0) {
         badge.className += ' plp-badge-clicked';
         badge.textContent = `Clicked ${record.clicks}x`;
+        badge.title = '';
       } else if (record.opens > 0) {
         badge.className += ' plp-badge-opened';
         badge.textContent = `Opened ${record.opens}x`;
+        badge.title = '';
       } else {
         badge.className += ' plp-badge-unopened';
         badge.textContent = 'Unopened';
+        badge.title = '';
       }
   
       if (isNew) {
