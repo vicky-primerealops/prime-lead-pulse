@@ -1,7 +1,5 @@
-import requests
+import urllib.request
+import json
 
 url = 'https://prime-lead-pulse.vercel.app/api/emails'
-
-# I don't have a valid user token, but I can see if it returns 400 or 500 when missing fields!
-res = requests.post(url, json={})
-print(res.status_code, res.text)
+# I can't authenticate to the API directly, so I can't fetch it without the user's token!

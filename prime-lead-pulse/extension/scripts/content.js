@@ -168,11 +168,20 @@ function findEmail(subject, recipientEmail) {
   if (!subject) return null;
   const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const normSubj = norm(subject);
-  const normRecip = recipientEmail ? recipientEmail.toLowerCase().trim() : '';
   
+  // Clean up "To: " from Gmail's UI just in case
+  const cleanRecipientUI = recipientEmail ? recipientEmail.replace(/^To:\s*/i, '').trim().toLowerCase() : '';
+
   let match = emailCache.find(e => {
     const isSubjMatch = norm(e.subject) === normSubj || normSubj.startsWith(norm(e.subject));
-    const isRecipMatch = normRecip ? e.recipient.toLowerCase().includes(normRecip) : true;
+    const isRecipMatch = cleanRecipientUI ? e.recipient.toLowerCase().includes(cleanRecipientUI) || cleanRecipientUI.includes(e.recipient.toLowerCase()) : true;
+    
+    // Fallback: If recipient matching fails due to Gmail UI grouping (e.g. "To: info 2"), 
+    // rely on the subject alone if it's long enough to be unique.
+    if (isSubjMatch && !isRecipMatch && e.subject.length > 15) {
+      return true;
+    }
+    
     return isSubjMatch && isRecipMatch;
   });
   
@@ -181,8 +190,9 @@ function findEmail(subject, recipientEmail) {
 
 // ------ API Calls via background ------
 async function fetchEmailStats() {
+  const senderEmail = getActiveSenderEmail();
   return new Promise(resolve => {
-    chrome.runtime.sendMessage({ action: 'GET_STATS' }, response => {
+    chrome.runtime.sendMessage({ action: 'GET_STATS', senderEmail }, response => {
       if (response && response.success) {
         // Build enriched cache
         emailCache = response.data.emails.map(email => {
@@ -210,7 +220,8 @@ function injectSentBadges() {
 
   emailRows.forEach(row => {
     try {
-      const recipientSpan = row.querySelector('.yP, .zF, [email], span[name]');
+      // Prioritize [email] attribute which contains the raw email address
+      const recipientSpan = row.querySelector('[email]') || row.querySelector('.yP, .zF, span[name]');
       if (!recipientSpan) return;
       const recipientEmail = recipientSpan.getAttribute('email') || recipientSpan.textContent || '';
 
@@ -417,7 +428,8 @@ function injectComposeTool(composeWindow) {
     dropdown.innerHTML = '<div style="padding:12px;text-align:center;color:#64748b;font-size:12px;">Loading templates...</div>';
     dropdown.style.display = 'block';
     
-    chrome.runtime.sendMessage({ action: 'GET_TEMPLATES' }, response => {
+    const senderEmail = getActiveSenderEmail();
+    chrome.runtime.sendMessage({ action: 'GET_TEMPLATES', senderEmail }, response => {
       if (!response || !response.success) {
         dropdown.innerHTML = '<div style="padding:12px;color:#ef4444;font-size:12px;">Error loading templates</div>';
         return;
