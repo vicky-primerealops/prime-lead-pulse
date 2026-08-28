@@ -8,32 +8,44 @@
 
 let isPolling = false; // Mutex lock to prevent concurrent polls
 
+let refreshTokenPromise = null;
+
 // Helper to fetch with automatic token refresh
 async function fetchWithAuth(url, options, session, apiUrl) {
   let res = await fetch(url, options);
   
   if (res.status === 401 && session.refresh_token) {
-    // Attempt to refresh the token
-    const base = apiUrl.replace(/\/$/, '');
-    const refreshRes = await fetch(`${base}/api/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: session.refresh_token })
-    });
+    if (!refreshTokenPromise) {
+      refreshTokenPromise = (async () => {
+        try {
+          const base = apiUrl.replace(/\/$/, '');
+          const refreshRes = await fetch(`${base}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: session.refresh_token })
+          });
+          
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            if (refreshData.success) {
+              await chrome.storage.local.set({ session: refreshData.session });
+              return refreshData.session;
+            }
+          }
+          await chrome.storage.local.remove('session');
+          return null;
+        } finally {
+          // Clear the promise after it's done so future expirations can trigger a new refresh
+          refreshTokenPromise = null;
+        }
+      })();
+    }
     
-    if (refreshRes.ok) {
-      const refreshData = await refreshRes.json();
-      if (refreshData.success) {
-        // Save new session
-        await chrome.storage.local.set({ session: refreshData.session });
-        
-        // Update authorization header and retry original request
-        options.headers['Authorization'] = `Bearer ${refreshData.session.access_token}`;
-        res = await fetch(url, options);
-      }
-    } else {
-      // If refresh fails, log them out
-      await chrome.storage.local.remove('session');
+    const newSession = await refreshTokenPromise;
+    
+    if (newSession) {
+      options.headers['Authorization'] = `Bearer ${newSession.access_token}`;
+      res = await fetch(url, options);
     }
   }
   return res;
@@ -140,9 +152,10 @@ async function pollForNotifications() {
     const currentKnownIds = new Set(knownEventIds || []);
     const newEventsToNotify = []; // Collect all new events first, then batch-notify
 
-    const res = await fetch(`${base}/api/emails`, {
+    const res = await fetchWithAuth(`${base}/api/emails`, {
       headers: { 'Authorization': `Bearer ${session.access_token}` }
-    });
+    }, session, apiUrl);
+    
     if (!res.ok) return;
     const { emails } = await res.json();
     
