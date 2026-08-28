@@ -63,7 +63,8 @@ async function getSessionForSender(senderEmail) {
   const { session, sessions } = await chrome.storage.local.get(['session', 'sessions']);
   if (sessions && sessions[senderEmail]) return sessions[senderEmail];
   if (session && session.user && session.user.email === senderEmail) return session;
-  throw new Error(`Please open the Prime Lead Pulse dashboard and log in with ${senderEmail} to link this account.`);
+  if (session) return session; // Fallback: allow tracking into the active PLP dashboard
+  throw new Error(`Please open the Prime Lead Pulse dashboard and log in to link this account.`);
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
