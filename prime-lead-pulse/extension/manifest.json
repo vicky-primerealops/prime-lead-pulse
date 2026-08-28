@@ -43,5 +43,8 @@
       "js": ["scripts/dashboard-sync.js"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": ["*://prime-lead-pulse.vercel.app/*", "*://localhost/*"]
+  }
 }
