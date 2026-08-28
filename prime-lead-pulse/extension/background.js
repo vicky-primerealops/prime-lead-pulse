@@ -52,6 +52,18 @@ async function fetchWithAuth(url, options, session, apiUrl) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'DASHBOARD_LOGIN') {
+    chrome.storage.local.set({ session: request.session, apiUrl: request.apiUrl });
+    sendResponse({ success: true });
+    return;
+  }
+  
+  if (request.action === 'DASHBOARD_LOGOUT') {
+    chrome.storage.local.remove('session');
+    sendResponse({ success: true });
+    return;
+  }
+
   if (request.action === 'CREATE_EMAIL') {
     (async () => {
       try {

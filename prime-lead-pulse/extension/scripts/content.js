@@ -384,17 +384,13 @@ function injectEmailViewFeatures() {
 
 // ------ Compose Window Injection ------
 function injectComposeTool(composeWindow) {
-  // FIX: Check for existing toolbar in the DOM instead of dataset flag.
-  // Gmail can match both div[role="dialog"] and nested .M9 for the same compose.
-  // This prevents double injection.
   if (composeWindow.querySelector('.plp-compose-toolbar')) return;
 
   const sendBtn = composeWindow.querySelector('div[aria-label^="Send"]');
   if (!sendBtn) return; 
 
-  // Find the table that contains the bottom toolbar
-  const bottomTable = sendBtn.closest('table');
-  if (!bottomTable) return;
+  const bottomToolbarWrapper = sendBtn.closest('.gU.Up') || sendBtn.closest('table');
+  if (!bottomToolbarWrapper) return;
 
   // Create a completely separate row (div) for our tools
   const container = document.createElement('div');
@@ -485,7 +481,7 @@ function injectComposeTool(composeWindow) {
   container.appendChild(trackWrapper);
   
   // Insert our new row precisely above the bottom formatting table
-  bottomTable.parentElement.insertBefore(container, bottomTable);
+  bottomToolbarWrapper.parentElement.insertBefore(container, bottomToolbarWrapper);
 }
 
 // ------ Send Interception ------
@@ -548,7 +544,8 @@ document.addEventListener('click', async (e) => {
         btn.click();
       });
     } else {
-      alert('Prime Lead Pulse: Failed to track. Please check you are logged in.');
+      const err = response?.data?.error || response?.error || 'Unknown Error';
+      alert(`Prime Lead Pulse: Failed to track.\nError details: ${err}`);
       btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
     }
   });
