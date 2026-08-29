@@ -144,8 +144,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const session = await getSessionForSender(senderEmail);
 
         const base = apiUrl.replace(/\/$/, '');
-        const query = senderEmail ? `?sender_email=${encodeURIComponent(senderEmail)}` : '';
-        const res = await fetchWithAuth(`${base}/api/emails${query}`, {
+        const res = await fetchWithAuth(`${base}/api/emails`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`

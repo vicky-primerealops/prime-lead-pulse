@@ -263,8 +263,8 @@ function injectSentBadges() {
         badge.textContent = `Opened ${record.opens}x`;
         badge.title = '';
       } else {
-        badge.className += ' plp-badge-unopened';
-        badge.textContent = 'Unopened';
+        badge.className += ' plp-badge-untracked';
+        badge.textContent = 'Delivered';
         badge.title = '';
       }
   
