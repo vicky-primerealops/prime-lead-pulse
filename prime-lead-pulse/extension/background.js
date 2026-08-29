@@ -47,9 +47,15 @@ async function fetchWithAuth(url, options, session, apiUrl, senderEmail) {
               delete sessions[senderEmail];
               await chrome.storage.local.set({ sessions });
             }
-          } else {
+          }
+          
+          // We MUST also clear the fallback 'session' if it matches the dead token, 
+          // otherwise it will get stuck in an infinite failure loop.
+          const { session: fallbackSession } = await chrome.storage.local.get(['session']);
+          if (fallbackSession && fallbackSession.access_token === session.access_token) {
             await chrome.storage.local.remove('session');
           }
+          
           return null;
         } finally {
           // Clear the promise after it's done so future expirations can trigger a new refresh
@@ -93,8 +99,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'DASHBOARD_LOGOUT') {
-    // We do not clear ALL sessions on logout anymore to support multi-tenant.
-    // Instead we rely on the session expiring or explicit disconnects if needed.
+    // We do not clear ALL sessions in the multi-tenant map, 
+    // but we SHOULD clear the fallback session so it stops using a dead token.
+    chrome.storage.local.remove('session');
     sendResponse({ success: true });
     return;
   }
