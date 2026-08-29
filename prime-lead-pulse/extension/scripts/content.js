@@ -166,26 +166,30 @@ function getActiveSenderEmail() {
 
 function findEmail(subject, recipientEmail) {
   if (!subject) return null;
-  const cleanAlphaNum = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanAlphaNum = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanNormSubj = cleanAlphaNum(subject);
   
   // Clean up "To: " from Gmail's UI just in case
   const cleanRecipientUI = recipientEmail ? recipientEmail.replace(/^To:\s*/i, '').trim().toLowerCase() : '';
 
   let match = emailCache.find(e => {
-    const cleanDbSubj = cleanAlphaNum(e.subject);
-    // As long as the DB subject is found anywhere inside the UI subject string
-    const isSubjMatch = cleanDbSubj.length > 0 && cleanNormSubj.includes(cleanDbSubj);
-    const isRecipMatch = cleanRecipientUI ? e.recipient.toLowerCase().includes(cleanRecipientUI) || 
-cleanRecipientUI.includes(e.recipient.toLowerCase()) : true;
-    
-    // Fallback: If recipient matching fails due to Gmail UI grouping (e.g. "To: info 2"), 
-    // rely on the subject alone if it's long enough to be unique.
-    if (isSubjMatch && !isRecipMatch && cleanDbSubj.length > 12) {
-      return true;
+    try {
+      const cleanDbSubj = cleanAlphaNum(e.subject);
+      // As long as the DB subject is found anywhere inside the UI subject string
+      const isSubjMatch = cleanDbSubj.length > 0 && cleanNormSubj.includes(cleanDbSubj);
+      
+      const safeDbRecip = (e.recipient || '').toLowerCase();
+      const isRecipMatch = cleanRecipientUI ? safeDbRecip.includes(cleanRecipientUI) || cleanRecipientUI.includes(safeDbRecip) : true;
+      
+      // Fallback: If recipient matching fails due to Gmail UI grouping
+      if (isSubjMatch && !isRecipMatch && cleanDbSubj.length > 12) {
+        return true;
+      }
+      
+      return isSubjMatch && isRecipMatch;
+    } catch (err) {
+      return false; // Skip if any error occurs
     }
-    
-    return isSubjMatch && isRecipMatch;
   });
   
   return match || null;
@@ -255,7 +259,7 @@ function injectSentBadges() {
         badge.title = statsError;
       } else if (!record) {
         badge.className += ' plp-badge-untracked';
-        badge.textContent = 'Untracked';
+        badge.textContent = 'Not Found';
         badge.title = '';
       } else if (record.clicks > 0) {
         badge.className += ' plp-badge-clicked';
@@ -267,7 +271,7 @@ function injectSentBadges() {
         badge.title = '';
       } else {
         badge.className += ' plp-badge-untracked';
-        badge.textContent = 'Delivered';
+        badge.textContent = '0 Opens';
         badge.title = '';
       }
   
@@ -301,7 +305,7 @@ function injectSentBadges() {
         const dateEl = row.querySelector('.xW.xY span');
         const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
         
-        showPanel(record || { recipient: recipientEmail, subject, status: 'Untracked', opens: 0, clicks: 0, events: [] }, subject, to, sentDate);
+        showPanel(record || { recipient: recipientEmail, subject, status: 'Not Found', opens: 0, clicks: 0, events: [] }, subject, to, sentDate);
       };
     } catch (err) {
       console.error('Prime Lead Pulse: Error injecting badge for row', err);
