@@ -175,20 +175,20 @@ function findEmail(subject, recipientEmail) {
   let match = emailCache.find(e => {
     try {
       const cleanDbSubj = cleanAlphaNum(e.subject);
-      // As long as the DB subject is found anywhere inside the UI subject string
-      const isSubjMatch = cleanDbSubj.length > 0 && cleanNormSubj.includes(cleanDbSubj);
+      // Check if DB subject is in UI subject OR if UI subject is in DB subject (handles "Re:" prefixes)
+      const isSubjMatch = cleanDbSubj.length > 0 && 
+                          (cleanNormSubj.includes(cleanDbSubj) || cleanDbSubj.includes(cleanNormSubj));
       
       const safeDbRecip = (e.recipient || '').toLowerCase();
       const isRecipMatch = cleanRecipientUI ? safeDbRecip.includes(cleanRecipientUI) || cleanRecipientUI.includes(safeDbRecip) : true;
       
-      // Fallback: If recipient matching fails due to Gmail UI grouping
       if (isSubjMatch && !isRecipMatch && cleanDbSubj.length > 12) {
         return true;
       }
       
       return isSubjMatch && isRecipMatch;
     } catch (err) {
-      return false; // Skip if any error occurs
+      return false;
     }
   });
   
@@ -259,7 +259,7 @@ function injectSentBadges() {
         badge.title = statsError;
       } else if (!record) {
         badge.className += ' plp-badge-untracked';
-        badge.textContent = 'Not Found';
+        badge.textContent = 'Untracked';
         badge.title = '';
       } else if (record.clicks > 0) {
         badge.className += ' plp-badge-clicked';
@@ -270,8 +270,8 @@ function injectSentBadges() {
         badge.textContent = `Opened ${record.opens}x`;
         badge.title = '';
       } else {
-        badge.className += ' plp-badge-untracked';
-        badge.textContent = '0 Opens';
+        badge.className += ' plp-badge-unopened';
+        badge.textContent = 'Unopened';
         badge.title = '';
       }
   
