@@ -40,7 +40,16 @@ async function fetchWithAuth(url, options, session, apiUrl, senderEmail) {
               return newSession;
             }
           }
-          // If refresh fails for this session, we don't clear ALL sessions, just return null
+          // If refresh fails for this session, clear it so it can fallback to the main session
+          if (senderEmail) {
+            const { sessions } = await chrome.storage.local.get(['sessions']);
+            if (sessions && sessions[senderEmail]) {
+              delete sessions[senderEmail];
+              await chrome.storage.local.set({ sessions });
+            }
+          } else {
+            await chrome.storage.local.remove('session');
+          }
           return null;
         } finally {
           // Clear the promise after it's done so future expirations can trigger a new refresh
