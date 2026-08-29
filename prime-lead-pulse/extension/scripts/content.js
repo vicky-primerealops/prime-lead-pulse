@@ -166,19 +166,22 @@ function getActiveSenderEmail() {
 
 function findEmail(subject, recipientEmail) {
   if (!subject) return null;
-  const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
-  const normSubj = norm(subject);
+  const cleanAlphaNum = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanNormSubj = cleanAlphaNum(subject);
   
   // Clean up "To: " from Gmail's UI just in case
   const cleanRecipientUI = recipientEmail ? recipientEmail.replace(/^To:\s*/i, '').trim().toLowerCase() : '';
 
   let match = emailCache.find(e => {
-    const isSubjMatch = norm(e.subject) === normSubj || normSubj.startsWith(norm(e.subject));
-    const isRecipMatch = cleanRecipientUI ? e.recipient.toLowerCase().includes(cleanRecipientUI) || cleanRecipientUI.includes(e.recipient.toLowerCase()) : true;
+    const cleanDbSubj = cleanAlphaNum(e.subject);
+    // As long as the DB subject is found anywhere inside the UI subject string
+    const isSubjMatch = cleanDbSubj.length > 0 && cleanNormSubj.includes(cleanDbSubj);
+    const isRecipMatch = cleanRecipientUI ? e.recipient.toLowerCase().includes(cleanRecipientUI) || 
+cleanRecipientUI.includes(e.recipient.toLowerCase()) : true;
     
     // Fallback: If recipient matching fails due to Gmail UI grouping (e.g. "To: info 2"), 
     // rely on the subject alone if it's long enough to be unique.
-    if (isSubjMatch && !isRecipMatch && e.subject.length > 15) {
+    if (isSubjMatch && !isRecipMatch && cleanDbSubj.length > 12) {
       return true;
     }
     
