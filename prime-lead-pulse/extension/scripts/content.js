@@ -143,6 +143,7 @@ if (!document.getElementById(PRIME_STYLE_ID)) {
 // ------ State ------
 let emailCache = []; // [{id, subject, recipient, sender_email, opens, clicks, status, events}]
 let panelEmailId = null;
+let hasFetchedOnce = false; // Prevents premature "Untracked" badges before first data load
 
 // ------ Helpers ------
 function formatEventTime(iso) {
@@ -164,35 +165,44 @@ function getActiveSenderEmail() {
   return urlMatch ? `account_${urlMatch[1]}` : null;
 }
 
+// ARCHITECTURE: Subject is the PRIMARY matching criterion (proven reliable in detail view).
+// Recipient is ONLY used as a tiebreaker when multiple emails share the same subject.
 function findEmail(subject, recipientEmail) {
-  if (!subject) return null;
-  const cleanAlphaNum = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cleanNormSubj = cleanAlphaNum(subject);
-  
-  // Clean up "To: " from Gmail's UI just in case
-  const cleanRecipientUI = recipientEmail ? recipientEmail.replace(/^To:\s*/i, '').trim().toLowerCase() : '';
+  if (!subject || emailCache.length === 0) return null;
 
-  let match = emailCache.find(e => {
+  const strip = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const uiSubj = strip(subject);
+  if (uiSubj.length === 0) return null;
+
+  // Step 1: Collect ALL emails whose subject matches (bidirectional substring)
+  const subjectMatches = [];
+  for (const e of emailCache) {
     try {
-      const cleanDbSubj = cleanAlphaNum(e.subject);
-      // Check if DB subject is in UI subject OR if UI subject is in DB subject (handles "Re:" prefixes)
-      const isSubjMatch = cleanDbSubj.length > 0 && 
-                          (cleanNormSubj.includes(cleanDbSubj) || cleanDbSubj.includes(cleanNormSubj));
-      
-      const safeDbRecip = (e.recipient || '').toLowerCase();
-      const isRecipMatch = cleanRecipientUI ? safeDbRecip.includes(cleanRecipientUI) || cleanRecipientUI.includes(safeDbRecip) : true;
-      
-      if (isSubjMatch && !isRecipMatch && cleanDbSubj.length > 12) {
-        return true;
+      const dbSubj = strip(e.subject);
+      if (dbSubj.length === 0) continue;
+      if (uiSubj.includes(dbSubj) || dbSubj.includes(uiSubj)) {
+        subjectMatches.push(e);
       }
-      
-      return isSubjMatch && isRecipMatch;
-    } catch (err) {
-      return false;
+    } catch (_) { /* skip */ }
+  }
+
+  if (subjectMatches.length === 0) return null;
+  if (subjectMatches.length === 1) return subjectMatches[0]; // Only one match — no ambiguity
+
+  // Step 2: Multiple subject matches — use recipient to disambiguate
+  if (recipientEmail) {
+    const cleanRecip = recipientEmail.replace(/^To:\s*/i, '').trim().toLowerCase();
+    if (cleanRecip) {
+      const recipMatch = subjectMatches.find(e => {
+        const dbRecip = (e.recipient || '').toLowerCase();
+        return dbRecip.includes(cleanRecip) || cleanRecip.includes(dbRecip);
+      });
+      if (recipMatch) return recipMatch;
     }
-  });
-  
-  return match || null;
+  }
+
+  // Step 3: Still ambiguous — return the most recent one (cache is sorted newest-first by API)
+  return subjectMatches[0];
 }
 
 // ------ API Calls via background ------
@@ -204,29 +214,34 @@ async function fetchEmailStats() {
     chrome.runtime.sendMessage({ action: 'GET_STATS', senderEmail }, response => {
       if (response && response.success) {
         statsError = null;
-        // Build enriched cache
         emailCache = response.data.emails.map(email => {
           const opens = (email.tracking_events || []).filter(e => e.event_type === 'open');
           const clicks = (email.tracking_events || []).filter(e => e.event_type === 'click');
-          let status = 'Untracked';
+          let status = 'Unopened'; // In the DB = tracked. Default to Unopened, not Untracked.
           if (clicks.length > 0) status = 'Clicked';
           else if (opens.length > 0) status = 'Opened';
           return { ...email, opens: opens.length, clicks: clicks.length, status, events: email.tracking_events || [] };
         });
+        console.log(`Prime Lead Pulse: Cache loaded with ${emailCache.length} tracked emails.`);
       } else {
         statsError = response?.error || 'Failed to connect';
         console.error('Prime Lead Pulse: Failed to fetch stats.', statsError);
       }
-      resolve(); // Always resolve so UI still initializes
+      hasFetchedOnce = true;
+      resolve();
     });
   });
 }
 
 /// ------ Sent Folder Badge Injection ------
 function injectSentBadges() {
+  // CRITICAL: Don't inject any badges until we have actual data from the server.
+  // Otherwise the MutationObserver stamps "Untracked" on everything before the cache loads.
+  if (!hasFetchedOnce) return;
+
   const emailRows = document.querySelectorAll('tr.zA');
   if (emailRows.length > 0 && !window.hasLoggedBadgeAttempt) {
-    console.log(`Prime Lead Pulse: Found ${emailRows.length} email rows, attempting to inject badges...`);
+    console.log(`Prime Lead Pulse: Found ${emailRows.length} email rows, cache has ${emailCache.length} tracked emails.`);
     window.hasLoggedBadgeAttempt = true;
   }
 
@@ -305,7 +320,7 @@ function injectSentBadges() {
         const dateEl = row.querySelector('.xW.xY span');
         const sentDate = dateEl ? dateEl.getAttribute('title') || dateEl.textContent : '';
         
-        showPanel(record || { recipient: recipientEmail, subject, status: 'Not Found', opens: 0, clicks: 0, events: [] }, subject, to, sentDate);
+        showPanel(record || { recipient: recipientEmail, subject, status: 'Untracked', opens: 0, clicks: 0, events: [] }, subject, to, sentDate);
       };
     } catch (err) {
       console.error('Prime Lead Pulse: Error injecting badge for row', err);

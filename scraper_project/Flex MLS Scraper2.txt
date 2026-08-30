@@ -1,0 +1,239 @@
+(async () => {
+  const CONFIG = {
+    modalMaxWaitMs: 6500, 
+    modalStableMs: 300,
+    delayAfterListScroll: 600,
+    delayAfterModalClose: 350,
+    scrollStepRatio: 0.75,
+    minScrollStep: 350,
+    maxIdleDiscoveryRounds: 12,
+    maxIdleExtractionRounds: 16
+  };
+
+  if (window.__IMAGINE_MLS_EXPORT_RUNNING__) {
+    console.warn('🛑 Already running. Run: window.STOP_IMAGINE_MLS_EXPORT = true');
+    return;
+  }
+  window.__IMAGINE_MLS_EXPORT_RUNNING__ = true;
+  window.STOP_IMAGINE_MLS_EXPORT = false;
+
+  const REQUIRED_FIELDS = ['Name', 'Position', 'Office', 'Address', 'Mobile', 'Email', 'Website', 'Short ID', 'License #', 'Office ID', 'Office License #', 'Originating System Name'];
+  const MODAL_SELECTORS = ['.modal.show', '.c-modal', '[role="dialog"]', '[class*="modal" i][class*="show" i]', '[class*="popup" i]'];
+  
+  const state = { discoveredMembers: new Map(), extractedKeys: new Set(), resultsMap: new Map(), outputFileName: '' };
+
+  const log = (...args) => console.log('🤖 [NIRA Hybrid]', ...args);
+  const warn = (...args) => console.warn('⚠️ [NIRA Hybrid]', ...args);
+  const delay = ms => new Promise(res => setTimeout(res, ms));
+  const cleanText = val => String(val == null ? '' : val).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  const isVisible = el => el && el.getBoundingClientRect().height > 0 && window.getComputedStyle(el).display !== 'none';
+
+  // --- CORE UTILITIES ---
+  function getScrollableElement() {
+    const containers = Array.from(document.querySelectorAll('.table-container, [style*="overflow: auto"], [style*="overflow-y: auto"], [role="tabpanel"], #membersTab'));
+    return containers.find(el => el.scrollHeight > el.clientHeight + 40) || document.scrollingElement || document.body;
+  }
+
+  function getMemberRows() {
+    const rows = [];
+    ['.memberEntry', '.c-list-entry', '[role="row"]', 'tr'].forEach(sel => {
+      try { rows.push(...document.querySelectorAll(sel)); } catch (_) {}
+    });
+    return Array.from(new Set(rows)).filter(el => isVisible(el) && el.innerText.length > 10 && !/load more|next/i.test(el.innerText));
+  }
+
+  function clickLikeHuman(el) {
+    if (!el) return;
+    try { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); } catch (_) {}
+    try { el.click(); } catch (_) {}
+  }
+
+  function getSafeClickTarget(row) {
+    const actionMenu = row.querySelector('[class*="action"], [class*="menu"], button, .fa-ellipsis-v, [data-icon="ellipsis-v"], svg');
+    if (actionMenu && isVisible(actionMenu)) return actionMenu;
+    const safeTargets = Array.from(row.querySelectorAll('[role="button"], [tabindex]:not([tabindex="-1"])')).filter(isVisible);
+    return safeTargets[0] || row;
+  }
+
+  async function openModalForRow(row) {
+    const target = getSafeClickTarget(row);
+    target.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await delay(150);
+    
+    const beforeModals = new Set(document.querySelectorAll(MODAL_SELECTORS.join(',')));
+    clickLikeHuman(target);
+    await delay(350); 
+
+    const dropdownItems = Array.from(document.querySelectorAll('.dropdown-menu a, .dropdown-menu button, [role="menuitem"], .popup-menu a')).filter(isVisible);
+    const viewDetailsBtn = dropdownItems.find(el => /view|detail|profile|open/i.test(el.innerText));
+    if (viewDetailsBtn) {
+        clickLikeHuman(viewDetailsBtn);
+    }
+
+    const start = Date.now();
+    while (Date.now() - start < CONFIG.modalMaxWaitMs) {
+      const currentModals = Array.from(document.querySelectorAll(MODAL_SELECTORS.join(','))).filter(isVisible);
+      const fresh = currentModals.find(m => !beforeModals.has(m)) || currentModals[currentModals.length - 1];
+      if (fresh && fresh.innerText.length > 20) return fresh;
+      await delay(200);
+    }
+    throw new Error('Modal timeout');
+  }
+
+  async function closeModal(modal) {
+    const closeBtns = Array.from((modal || document).querySelectorAll('button, [aria-label="Close"], .close')).filter(isVisible);
+    const textCloseBtn = closeBtns.find(b => /close/i.test(b.innerText || b.value || b.getAttribute('aria-label')));
+    
+    if (textCloseBtn) clickLikeHuman(textCloseBtn);
+    else if (closeBtns[0]) clickLikeHuman(closeBtns[0]);
+    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    
+    await delay(CONFIG.delayAfterModalClose);
+  }
+
+  // --- UPGRADED: TEXT-BASED DATA PARSER ---
+  function extractPopupDetails(modal, discoveryKey, rowName) {
+    const record = { 'Extraction Status': 'OK', 'Result Key': discoveryKey };
+    
+    // Clear fields out FIRST before setting the Name to prevent overwriting
+    REQUIRED_FIELDS.forEach(f => record[f] = '');
+    record['Name'] = rowName; 
+
+    const rawText = cleanText(modal.innerText);
+    record['All Raw Text'] = rawText;
+
+    // 1. Guaranteed Regex Fallbacks for Emails and Phones
+    const emails = [...rawText.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)].map(m => m[0].toLowerCase());
+    const phones = [...rawText.matchAll(/(?:\+?1[\s.\-]*)?(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4}/gi)].map(m => m[0]);
+    record['Email'] = [...new Set(emails)][0] || '';
+    record['Mobile'] = [...new Set(phones)][0] || '';
+
+    // 2. Exact Text Mapping (NIRA Specific)
+    // This perfectly extracts the layout from the raw text without relying on HTML
+    const extract = (pattern) => { const m = rawText.match(pattern); return m ? m[1].trim() : ''; };
+    
+    record['Name'] = extract(/\bName\s+(.*?)\s+Position\b/i) || record['Name'];
+    record['Position'] = extract(/\bPosition\s+(.*?)\s+Office\b/i);
+    record['Office'] = extract(/\bOffice\s+(.*?)\s+Address\b/i);
+    record['Address'] = extract(/\bAddress\s+(.*?)\s+(?:Mobile|Phone|Email|Direct|Fax|Primary)\b/i);
+    record['Website'] = extract(/\bWebsite\s+(.*?)\s+Short ID\b/i);
+    record['Short ID'] = extract(/\bShort ID\s+(.*?)\s+Office ID\b/i);
+    record['Office ID'] = extract(/\bOffice ID\s+(.*?)\s+Originating System Name\b/i);
+    record['Originating System Name'] = extract(/\bOriginating System Name\s+(.*?)\s+License #\b/i);
+    record['License #'] = extract(/\bLicense #\s+(.*?)\s+(?:Office License #|View Member|Close|$)/i);
+    record['Office License #'] = extract(/\bOffice License #\s+(.*?)\s+(?:View Member|Close|$)/i);
+
+    return record;
+  }
+
+  function downloadCsvNow() {
+    const records = Array.from(state.resultsMap.values());
+    if (records.length === 0) return warn("No data to download.");
+    
+    const headers = ['Extraction Status', 'Name', 'Position', 'Office', 'Address', 'Mobile', 'Email', 'Website', 'Short ID', 'License #', 'Office ID', 'Office License #', 'Originating System Name', 'All Raw Text'];
+    const csvRows = [headers.join(',')];
+    
+    records.forEach(r => csvRows.push(headers.map(h => `"${(r[h] || '').replace(/"/g, '""')}"`).join(',')));
+    
+    const blob = new Blob(['\ufeff' + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = state.outputFileName || `nira_mls_${Date.now()}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  window.IMAGINE_MLS_DOWNLOAD_NOW = downloadCsvNow;
+
+  async function discoveryPhase(scroller) {
+    log('🕵️ Phase 1: Rapid List Mapping...');
+    let idleRounds = 0;
+    while (!window.STOP_IMAGINE_MLS_EXPORT && idleRounds < CONFIG.maxIdleDiscoveryRounds) {
+      const before = state.discoveredMembers.size;
+      getMemberRows().forEach(row => {
+        const text = cleanText(row.innerText);
+        const key = text.substring(0, 40); 
+        if (!state.discoveredMembers.has(key)) {
+            state.discoveredMembers.set(key, { key, name: text.split('\n')[0] });
+        }
+      });
+      
+      scroller.scrollTop += 800;
+      window.scrollBy(0, 800);
+      await delay(CONFIG.delayAfterListScroll);
+      
+      const loadMore = Array.from(document.querySelectorAll('button')).find(el => isVisible(el) && /load more|next/i.test(el.innerText));
+      if (loadMore) clickLikeHuman(loadMore);
+      
+      idleRounds = (state.discoveredMembers.size === before) ? idleRounds + 1 : 0;
+      log(`Discovered so far: ${state.discoveredMembers.size}`);
+    }
+  }
+
+  async function extractionPhase(scroller) {
+    log('⛏️ Phase 2: Opening popups and extracting structured data...');
+    if(scroller) scroller.scrollTop = 0; 
+    
+    const remaining = new Set(state.discoveredMembers.keys());
+    let consecutiveZeroRounds = 0; 
+
+    while (!window.STOP_IMAGINE_MLS_EXPORT && remaining.size > 0 && consecutiveZeroRounds < 5) {
+      let extractedThisRound = 0;
+      const visibleRows = getMemberRows();
+
+      for (const row of visibleRows) {
+        if (window.STOP_IMAGINE_MLS_EXPORT) break;
+        const key = cleanText(row.innerText).substring(0, 40);
+        const rowName = cleanText(row.innerText).split('\n')[0];
+
+        if (state.extractedKeys.has(key) || !remaining.has(key)) continue;
+
+        try {
+          const modal = await openModalForRow(row);
+          const record = extractPopupDetails(modal, key, rowName);
+          state.resultsMap.set(key, record);
+          await closeModal(modal);
+          
+          state.extractedKeys.add(key);
+          remaining.delete(key);
+          extractedThisRound++;
+          log(`✅ Extracted: ${rowName} (Total: ${state.resultsMap.size})`);
+          
+        } catch (err) {
+          state.extractedKeys.add(key); 
+          remaining.delete(key);
+          state.resultsMap.set(key, { 'Extraction Status': 'Failed', 'Name': rowName });
+        }
+      }
+
+      scroller.scrollTop += 800;
+      window.scrollBy(0, 800);
+      await delay(CONFIG.delayAfterListScroll);
+      
+      if (extractedThisRound === 0) {
+          consecutiveZeroRounds++;
+          warn(`No new popups opened. Anti-Zombie check ${consecutiveZeroRounds}/5`);
+      } else {
+          consecutiveZeroRounds = 0;
+      }
+    }
+  }
+
+  try {
+    state.outputFileName = prompt('File name for NIRA export:', `nira_mls_${Date.now()}.csv`) || `nira_mls_${Date.now()}.csv`;
+    const scroller = getScrollableElement();
+    
+    await discoveryPhase(scroller);
+    if (state.discoveredMembers.size > 0) await extractionPhase(scroller);
+    else warn('Could not find any members. Ensure the table is visible.');
+    
+    log('💾 Exporting final CSV...');
+    downloadCsvNow();
+  } catch (err) {
+    console.error('Fatal Scraper Error:', err);
+    downloadCsvNow();
+  } finally {
+    window.__IMAGINE_MLS_EXPORT_RUNNING__ = false;
+  }
+})();

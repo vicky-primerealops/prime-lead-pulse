@@ -1,0 +1,1267 @@
+(async () => {
+  const CONFIG = {
+  modalMaxWaitMs: 9000,
+  modalStableMs: 550,
+  delayAfterListScroll: 550,
+  delayAfterModalClose: 225,
+  scrollStepRatio: 0.75,
+  minScrollStep: 350,
+  progressEvery: 50,
+  debugMode: false,
+  outputFileName: '',
+  maxIdleDiscoveryRounds: 12,
+  maxIdleExtractionRounds: 16
+  };
+
+  if (window.__IMAGINE_MLS_EXPORT_RUNNING__) {
+    console.warn('[ImagineMLS Export] Already running. To stop it, run: window.STOP_IMAGINE_MLS_EXPORT = true');
+    return;
+  }
+
+  window.__IMAGINE_MLS_EXPORT_RUNNING__ = true;
+  window.STOP_IMAGINE_MLS_EXPORT = false;
+  window.IMAGINE_MLS_LIVE_RESULTS = [];
+
+  const REQUIRED_FIELDS = [
+    'Name',
+    'Phone',
+    'Mobile',
+    'Email',
+    'Position',
+    'Office',
+    'Address',
+    'Website',
+    'Short ID',
+    'License #',
+    'Office ID',
+    'Office License #',
+    'Originating System',
+    'Status',
+    'All Emails',
+    'All Phones',
+    'All Websites',
+    'All Links',
+    'Full Raw Popup Text'
+  ];
+
+  const ROW_SELECTORS = [
+    '#membersTab .memberEntry',
+    '#membersTab .c-list-entry',
+    '#membersTab [class*="list-entry"]',
+    '#membersTab [role="row"]',
+    '#membersTab tr',
+    '[id*="members" i] .memberEntry',
+    '[id*="members" i] .c-list-entry',
+    '[id*="members" i] [class*="list-entry"]',
+    '[id*="members" i] [role="row"]',
+    '[id*="members" i] tr',
+    '.memberEntry',
+    '.c-list-entry',
+    '[class*="list-entry"]',
+    '[role="row"]',
+    'tr',
+    '#membersTab [class*="member" i]',
+    '[id*="members" i] [class*="member" i]'
+  ];
+
+  const LIST_ROOT_SELECTORS = [
+    '#membersTab',
+    '[id*="members" i]',
+    '[class*="members" i]',
+    '[role="tabpanel"]',
+    '.tab-pane.active',
+    '.active[role="tabpanel"]',
+    'main',
+    'body'
+  ];
+
+  const MODAL_SELECTORS = [
+    '#memberDetailsModal',
+    '.modal.show',
+    '.modal[style*="display: block"]',
+    '.c-modal',
+    '[role="dialog"]',
+    '[aria-modal="true"]',
+    '[class*="modal" i][class*="show" i]',
+    '[class*="popup" i]',
+    '[class*="popover" i]',
+    '[class*="drawer" i][class*="open" i]'
+  ];
+
+  const CLOSE_BUTTON_SELECTORS = [
+    'button[aria-label="Close"]',
+    'button[title="Close"]',
+    'button.close',
+    '.c-modal__close',
+    '[data-dismiss="modal"]',
+    '[data-bs-dismiss="modal"]',
+    '[class*="close" i]',
+    '[aria-label*="close" i]',
+    '[title*="close" i]'
+  ];
+
+  const LOAD_MORE_SELECTOR = [
+    'button',
+    'a',
+    '[role="button"]',
+    'input[type="button"]',
+    'input[type="submit"]'
+  ].join(',');
+
+  const BASE_HEADERS = [
+    'Index',
+    'Extraction Status',
+    'Discovery Key',
+    'Result Key',
+    'Row Name',
+    'Row Office',
+    'Row License #',
+    'Row Short ID',
+    'Full Visible Row Text',
+    'Stable Row Attributes',
+    'Extracted At'
+  ];
+
+  const FIELD_ALIASES = [
+    ['Originating System', /^(originating\s*system|originating\s*mls|source\s*system)$/i],
+    ['Office License #', /^(office\s*license\s*(#|number|no\.?|num)?|office\s*lic\.?\s*(#|number|no\.?)?)$/i],
+    ['License #', /^(license\s*(#|number|no\.?|num)?|lic\.?\s*(#|number|no\.?)?|agent\s*license)$/i],
+    ['Office ID', /^(office\s*id|office\s*identifier|office\s*short\s*id)$/i],
+    ['Short ID', /^(short\s*id|shortid|member\s*id|mls\s*id|agent\s*id)$/i],
+    ['Mobile', /^(mobile|cell|cell\s*phone|mobile\s*phone)$/i],
+    ['Phone', /^(phone|telephone|direct|main\s*phone|office\s*phone|work\s*phone)$/i],
+    ['Email', /^(email|e-mail|email\s*address|e-mail\s*address)$/i],
+    ['Website', /^(website|web\s*site|url|homepage|home\s*page)$/i],
+    ['Position', /^(position|title|role|job\s*title)$/i],
+    ['Address', /^(address|mailing\s*address|office\s*address|location)$/i],
+    ['Office', /^(office|brokerage|company|firm)$/i],
+    ['Status', /^(status|member\s*status)$/i],
+    ['Name', /^(name|member\s*name|agent\s*name|full\s*name)$/i]
+  ];
+
+  const SIMPLE_FIELD_LABELS = new Set([
+    'name', 'phone', 'telephone', 'mobile', 'cell', 'email', 'e-mail', 'position', 'title',
+    'office', 'brokerage', 'company', 'address', 'website', 'url', 'short id', 'shortid',
+    'member id', 'mls id', 'license #', 'license', 'lic #', 'office id', 'office license #',
+    'office license', 'originating system', 'status'
+  ]);
+
+  const state = {
+    discoveredMembers: new Map(),
+    extractedKeys: new Set(),
+    resultsMap: new Map(),
+    modalAttempts: new Map(),
+    extraHeaders: new Set(),
+    failedModalCount: 0,
+    outputFileName: ''
+  };
+
+  function log(...args) {
+    console.log('[ImagineMLS Export]', ...args);
+  }
+
+  function debug(...args) {
+    if (CONFIG.debugMode) console.debug('[ImagineMLS Export:debug]', ...args);
+  }
+
+  function warn(...args) {
+    console.warn('[ImagineMLS Export]', ...args);
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function cleanText(value) {
+    return String(value == null ? '' : value)
+      .replace(/\u00a0/g, ' ')
+      .replace(/[\t\r]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ ]{2,}/g, ' ')
+      .trim();
+  }
+
+  function oneLine(value) {
+    return cleanText(value).replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+
+  function normalizeKeyPart(value) {
+    return oneLine(value).toLowerCase().replace(/[^a-z0-9@.+#-]+/g, ' ').trim();
+  }
+
+  function simpleHash(str) {
+    let h = 2166136261;
+    const input = String(str || '');
+    for (let i = 0; i < input.length; i++) {
+      h ^= input.charCodeAt(i);
+      h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+    }
+    return ('0000000' + (h >>> 0).toString(16)).slice(-8);
+  }
+
+  function isVisible(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 2 && rect.height > 2 && rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth;
+  }
+
+  function isActuallyVisibleAnywhere(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 2 && rect.height > 2;
+  }
+
+  function cssPath(el) {
+    if (!el || el === window) return 'window/document';
+    if (el === document.body) return 'body';
+    if (el === document.documentElement) return 'html';
+    const parts = [];
+    let node = el;
+    while (node && node.nodeType === 1 && node !== document.body && parts.length < 5) {
+      let part = node.tagName.toLowerCase();
+      if (node.id) {
+        part += '#' + node.id;
+        parts.unshift(part);
+        break;
+      }
+      const cls = Array.from(node.classList || []).slice(0, 2).join('.');
+      if (cls) part += '.' + cls;
+      parts.unshift(part);
+      node = node.parentElement;
+    }
+    return parts.join(' > ') || String(el);
+  }
+
+  function getScrollableElement(scroller) {
+    if (scroller === window || scroller === document || scroller === document.body || scroller === document.documentElement) {
+      return document.scrollingElement || document.documentElement || document.body;
+    }
+    return scroller;
+  }
+
+  function getScrollInfo(scroller) {
+    const el = getScrollableElement(scroller);
+    const top = el.scrollTop;
+    const scrollHeight = el.scrollHeight;
+    const clientHeight = el.clientHeight || window.innerHeight;
+    const maxTop = Math.max(0, scrollHeight - clientHeight);
+    return {
+      el,
+      top,
+      scrollHeight,
+      clientHeight,
+      maxTop,
+      atBottom: top >= maxTop - 8
+    };
+  }
+
+  async function scrollToTop(scroller) {
+    const el = getScrollableElement(scroller);
+    if (scroller === window || el === document.scrollingElement || el === document.documentElement || el === document.body) {
+      window.scrollTo(0, 0);
+    } else {
+      el.scrollTop = 0;
+    }
+    await delay(CONFIG.delayAfterListScroll * 2);
+  }
+
+  async function scrollForward(scroller) {
+    const infoBefore = getScrollInfo(scroller);
+    const step = Math.max(CONFIG.minScrollStep, Math.floor(infoBefore.clientHeight * CONFIG.scrollStepRatio));
+    if (scroller === window || infoBefore.el === document.scrollingElement || infoBefore.el === document.documentElement || infoBefore.el === document.body) {
+      window.scrollBy(0, step);
+    } else {
+      infoBefore.el.scrollTop = Math.min(infoBefore.maxTop, infoBefore.top + step);
+    }
+    await delay(CONFIG.delayAfterListScroll);
+    const infoAfter = getScrollInfo(scroller);
+    return Math.abs(infoAfter.top - infoBefore.top) > 3;
+  }
+
+  async function scrollElementIntoView(el) {
+    try {
+      el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    } catch (_) {
+      try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (__) {}
+    }
+    await delay(80);
+  }
+
+  function findListRoot() {
+    let best = document.body;
+    let bestScore = -1;
+    for (const selector of LIST_ROOT_SELECTORS) {
+      let elements = [];
+      try { elements = Array.from(document.querySelectorAll(selector)); } catch (_) { continue; }
+      for (const el of elements) {
+        if (!isActuallyVisibleAnywhere(el)) continue;
+        const textLen = oneLine(el.innerText || el.textContent || '').length;
+        let rowCount = 0;
+        for (const rowSelector of ROW_SELECTORS.slice(0, 12)) {
+          try { rowCount += el.querySelectorAll(rowSelector).length; } catch (_) {}
+        }
+        const rect = el.getBoundingClientRect();
+        const score = rowCount * 20 + Math.min(textLen, 3000) / 300 + Math.min(rect.height, 1000) / 100;
+        if (score > bestScore) {
+          best = el;
+          bestScore = score;
+        }
+      }
+    }
+    return best || document.body;
+  }
+
+  function hasScrollableOverflow(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const style = window.getComputedStyle(el);
+    const overflowY = style.overflowY;
+    const canScroll = /(auto|scroll|overlay)/i.test(overflowY) || el.scrollHeight > el.clientHeight + 40;
+    return canScroll && el.scrollHeight > el.clientHeight + 40;
+  }
+
+  function detectScrollContainer(listRoot) {
+    const rowEls = getMemberRows(listRoot, { allowGlobalFallback: true });
+    const candidates = new Set();
+
+    if (listRoot) candidates.add(listRoot);
+    for (const row of rowEls.slice(0, 15)) {
+      let node = row;
+      let depth = 0;
+      while (node && node.nodeType === 1 && node !== document.body && depth < 12) {
+        candidates.add(node);
+        node = node.parentElement;
+        depth++;
+      }
+    }
+
+    for (const selector of LIST_ROOT_SELECTORS) {
+      try { document.querySelectorAll(selector).forEach(el => candidates.add(el)); } catch (_) {}
+    }
+
+    let best = null;
+    let bestScore = -1;
+    for (const el of candidates) {
+      if (!isActuallyVisibleAnywhere(el) || !hasScrollableOverflow(el)) continue;
+      let rowCount = 0;
+      try { rowCount = getMemberRows(el, { allowGlobalFallback: false }).length; } catch (_) { rowCount = 0; }
+      const info = getScrollInfo(el);
+      const score = rowCount * 100 + Math.min(info.scrollHeight - info.clientHeight, 5000) / 25;
+      if (score > bestScore) {
+        best = el;
+        bestScore = score;
+      }
+    }
+
+    const doc = getScrollableElement(window);
+    if (!best && doc.scrollHeight > doc.clientHeight + 40) return window;
+    return best || window;
+  }
+
+  function isInsideModalOrDialog(el) {
+    try { return !!el.closest(MODAL_SELECTORS.join(',')); } catch (_) { return false; }
+  }
+
+  function looksLikeHeaderRow(el, text) {
+    const t = oneLine(text).toLowerCase();
+    if (!t) return true;
+    if (el.tagName === 'TR' && el.querySelector('th') && !el.querySelector('td')) return true;
+    if (/^\s*(name\s+office\s+license|name\s+office|office\s+license)/i.test(t) && t.length < 120) return true;
+    return false;
+  }
+
+  function validRowCandidate(el) {
+    if (!el || el.nodeType !== 1 || !isVisible(el)) return false;
+    if (isInsideModalOrDialog(el)) return false;
+    const rect = el.getBoundingClientRect();
+    if (rect.height < 18 || rect.width < 120) return false;
+    if (rect.height > Math.max(window.innerHeight * 1.35, 900)) return false;
+    const text = cleanText(el.innerText || el.textContent || '');
+    if (text.length < 2 || text.length > 2500) return false;
+    if (looksLikeHeaderRow(el, text)) return false;
+    if (/^(load more|show more|next|previous)$/i.test(oneLine(text))) return false;
+    return true;
+  }
+
+  function dedupeRowElements(elements) {
+    const valid = elements.filter(validRowCandidate);
+    const groups = [];
+    for (const el of valid) {
+      const rect = el.getBoundingClientRect();
+      const text = oneLine(el.innerText || el.textContent || '');
+      const sig = `${Math.round(rect.top / 4)}|${Math.round(rect.left / 4)}|${simpleHash(text.slice(0, 350))}`;
+      let group = groups.find(g => g.sig === sig || (Math.abs(g.rect.top - rect.top) < 3 && Math.abs(g.rect.left - rect.left) < 3 && g.text === text));
+      if (!group) {
+        group = { sig, rect, text, best: el, score: rowElementScore(el) };
+        groups.push(group);
+      } else {
+        const score = rowElementScore(el);
+        if (score > group.score) {
+          group.best = el;
+          group.score = score;
+          group.rect = rect;
+          group.text = text;
+        }
+      }
+    }
+    return groups.map(g => g.best);
+  }
+
+  function rowElementScore(el) {
+    const cls = String(el.className || '');
+    let score = 0;
+    if (el.tagName === 'TR') score += 50;
+    if (el.getAttribute('role') === 'row') score += 45;
+    if (/memberEntry|c-list-entry|list-entry|list_item|list-item|row/i.test(cls)) score += 60;
+    if (/member/i.test(cls)) score += 20;
+    if (el.querySelectorAll('td, [role="cell"]').length >= 2) score += 25;
+    if (el.querySelector('a,button,[role="button"],[tabindex]')) score += 10;
+    const rect = el.getBoundingClientRect();
+    score += Math.min(rect.width * rect.height, 200000) / 10000;
+    return score;
+  }
+
+  function getMemberRows(root, options = {}) {
+    const allowGlobalFallback = options.allowGlobalFallback !== false;
+    const searchRoots = [];
+    if (root && root.querySelectorAll) searchRoots.push(root);
+    if (allowGlobalFallback && root !== document) searchRoots.push(document);
+
+    for (const selector of ROW_SELECTORS) {
+      let found = [];
+      for (const searchRoot of searchRoots) {
+        try { found.push(...Array.from(searchRoot.querySelectorAll(selector))); } catch (_) {}
+      }
+      found = dedupeRowElements(Array.from(new Set(found)));
+      if (found.length > 0) return found;
+    }
+    return [];
+  }
+
+  function getAttributeSnapshot(el) {
+    const obj = {};
+    if (!el || !el.attributes) return obj;
+    for (const attr of Array.from(el.attributes)) {
+      if (/^(id|class|role|aria-label|title)$/i.test(attr.name) || /^data-/i.test(attr.name)) {
+        const val = oneLine(attr.value);
+        if (val && val.length < 500) obj[attr.name] = val;
+      }
+    }
+    const link = el.querySelector && el.querySelector('a[href]');
+    if (link) obj.firstHref = link.href || link.getAttribute('href') || '';
+    return obj;
+  }
+
+  function getTableHeaderMap(row) {
+    const table = row.closest && row.closest('table');
+    if (!table) return [];
+    const headers = Array.from(table.querySelectorAll('thead th, thead [role="columnheader"]')).map(h => oneLine(h.innerText || h.textContent));
+    if (headers.length) return headers;
+    const firstRow = table.querySelector('tr');
+    if (!firstRow || firstRow === row) return [];
+    return Array.from(firstRow.querySelectorAll('th, [role="columnheader"]')).map(h => oneLine(h.innerText || h.textContent));
+  }
+
+  function canonicalLabel(label) {
+    const raw = oneLine(label).replace(/[:#*]+$/g, '').trim();
+    const norm = raw.toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/\bno\.?\b/g, 'number')
+      .replace(/\bnum\.?\b/g, 'number')
+      .trim();
+
+    for (const [canonical, pattern] of FIELD_ALIASES) {
+      if (pattern.test(norm)) return canonical;
+    }
+    return raw ? raw.replace(/\b\w/g, ch => ch.toUpperCase()) : '';
+  }
+
+  function assignRowField(rowData, label, value) {
+    const canonical = canonicalLabel(label);
+    const val = oneLine(value);
+    if (!val) return;
+    if (canonical === 'Name' && !rowData['Row Name']) rowData['Row Name'] = val;
+    if (canonical === 'Office' && !rowData['Row Office']) rowData['Row Office'] = val;
+    if (canonical === 'License #' && !rowData['Row License #']) rowData['Row License #'] = val;
+    if (canonical === 'Short ID' && !rowData['Row Short ID']) rowData['Row Short ID'] = val;
+  }
+
+  function extractVisibleRowData(row) {
+    const fullText = cleanText(row.innerText || row.textContent || '');
+    const lines = fullText.split('\n').map(oneLine).filter(Boolean);
+    const rowData = {
+      'Row Name': '',
+      'Row Office': '',
+      'Row License #': '',
+      'Row Short ID': '',
+      'Full Visible Row Text': fullText,
+      'Stable Row Attributes': JSON.stringify(getAttributeSnapshot(row))
+    };
+
+    const nameSelectors = [
+      '[class*="name" i]',
+      '[data-label*="name" i]',
+      '[aria-label*="name" i]'
+    ];
+    for (const selector of nameSelectors) {
+      const el = row.querySelector && row.querySelector(selector);
+      const val = el ? oneLine(el.innerText || el.textContent || '') : '';
+      if (val && val.length < 180 && !/^name$/i.test(val)) {
+        rowData['Row Name'] = val;
+        break;
+      }
+    }
+
+    const cells = Array.from(row.querySelectorAll ? row.querySelectorAll('td, th, [role="cell"], [data-label]') : [])
+      .filter(isActuallyVisibleAnywhere)
+      .map(cell => ({
+        label: oneLine(cell.getAttribute('data-label') || cell.getAttribute('aria-label') || ''),
+        text: oneLine(cell.innerText || cell.textContent || '')
+      }))
+      .filter(c => c.text && c.text.length < 500);
+
+    for (const cell of cells) {
+      if (cell.label) assignRowField(rowData, cell.label, cell.text);
+    }
+
+    const headers = getTableHeaderMap(row);
+    if (headers.length && cells.length) {
+      cells.forEach((cell, idx) => {
+        if (headers[idx]) assignRowField(rowData, headers[idx], cell.text);
+      });
+    }
+
+    if (!rowData['Row Name'] && cells[0]) rowData['Row Name'] = stripInlineLabel(cells[0].text, 'Name');
+    if (!rowData['Row Office'] && cells[1]) rowData['Row Office'] = stripInlineLabel(cells[1].text, 'Office');
+    if (!rowData['Row License #'] && cells[2]) rowData['Row License #'] = stripInlineLabel(cells[2].text, 'License #');
+    if (!rowData['Row Short ID'] && cells[3]) rowData['Row Short ID'] = stripInlineLabel(cells[3].text, 'Short ID');
+
+    parseInlineRowText(rowData, fullText, lines);
+
+    if (!rowData['Row Name']) {
+      const fallback = lines.find(line => !/^\s*(office|license|short id|phone|email|status)\b/i.test(line));
+      if (fallback) rowData['Row Name'] = fallback;
+    }
+    if (!rowData['Row Office'] && lines.length > 1) {
+      const officeLine = lines.find(line => /\boffice\b/i.test(line) && !/office\s*(id|license)/i.test(line));
+      rowData['Row Office'] = officeLine ? stripInlineLabel(officeLine, 'Office') : (lines[1] || '');
+    }
+
+    rowData.discoveryKey = buildDiscoveryKey(rowData);
+    return rowData;
+  }
+
+  function stripInlineLabel(text, label) {
+    const value = oneLine(text);
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
+    return oneLine(value.replace(new RegExp('^' + escaped + '\\s*:?\\s*', 'i'), ''));
+  }
+
+  function parseInlineRowText(rowData, text, lines) {
+    const patterns = [
+      ['Row License #', /(?:^|\b)(?:license|lic\.?)(?:\s*(?:#|number|no\.?|num))?\s*[:#]?\s*([A-Z0-9][A-Z0-9._-]{2,})/i],
+      ['Row Short ID', /(?:^|\b)(?:short\s*id|shortid|member\s*id|mls\s*id)\s*[:#]?\s*([A-Z0-9][A-Z0-9._-]{1,})/i],
+      ['Row Office', /(?:^|\b)office\s*:\s*([^\n|•]+)/i],
+      ['Row Name', /(?:^|\b)name\s*:\s*([^\n|•]+)/i]
+    ];
+    for (const [field, regex] of patterns) {
+      if (!rowData[field]) {
+        const match = text.match(regex);
+        if (match && match[1]) rowData[field] = oneLine(match[1]);
+      }
+    }
+
+    for (let i = 0; i < lines.length - 1; i++) {
+      const current = lines[i].replace(/:$/, '').toLowerCase();
+      const next = lines[i + 1];
+      if (SIMPLE_FIELD_LABELS.has(current)) assignRowField(rowData, current, next);
+    }
+  }
+
+  function buildDiscoveryKey(rowData) {
+    const parts = [
+      rowData['Row Name'],
+      rowData['Row Office'],
+      rowData['Row License #'],
+      rowData['Row Short ID']
+    ].map(normalizeKeyPart).filter(Boolean);
+    if (parts.length >= 2) return parts.join(' | ');
+    if (parts.length === 1) return parts[0] + ' | text:' + simpleHash(rowData['Full Visible Row Text']);
+    return 'row:' + simpleHash((rowData['Full Visible Row Text'] || '') + '|' + (rowData['Stable Row Attributes'] || ''));
+  }
+
+  function findLoadMoreButton() {
+    let candidates = [];
+    try { candidates = Array.from(document.querySelectorAll(LOAD_MORE_SELECTOR)); } catch (_) { return null; }
+    return candidates.find(el => {
+      if (!isVisible(el)) return false;
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+      const text = oneLine(el.innerText || el.textContent || el.value || el.getAttribute('aria-label') || '');
+      return /^(load\s*more|show\s*more|more|next|view\s*more|see\s*more)$/i.test(text);
+    }) || null;
+  }
+
+  async function clickLoadMoreIfPresent() {
+    const btn = findLoadMoreButton();
+    if (!btn) return false;
+    debug('Clicking load/show more button:', oneLine(btn.innerText || btn.value || ''));
+    try {
+      btn.click();
+      await delay(CONFIG.delayAfterListScroll * 2);
+      return true;
+    } catch (err) {
+      warn('Load More click failed:', err);
+      return false;
+    }
+  }
+
+  function getVisibleModals() {
+    const results = [];
+    for (const selector of MODAL_SELECTORS) {
+      try { results.push(...Array.from(document.querySelectorAll(selector))); } catch (_) {}
+    }
+    return Array.from(new Set(results)).filter(el => {
+      if (!isActuallyVisibleAnywhere(el)) return false;
+      const text = oneLine(el.innerText || el.textContent || '');
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 100 || rect.height < 40) return false;
+      return text.length > 0 || el.querySelector('input,button,a,textarea,select,[class*="spinner" i],[class*="loading" i]');
+    }).sort((a, b) => {
+      const za = Number(window.getComputedStyle(a).zIndex) || 0;
+      const zb = Number(window.getComputedStyle(b).zIndex) || 0;
+      return za - zb;
+    });
+  }
+
+  function clickLikeHuman(el) {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: rect.left + Math.min(rect.width / 2, Math.max(5, rect.width - 5)),
+      clientY: rect.top + Math.min(rect.height / 2, Math.max(5, rect.height - 5))
+    };
+    for (const type of ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click']) {
+      try { el.dispatchEvent(new MouseEvent(type, opts)); } catch (_) {}
+    }
+    try { el.click(); } catch (_) {}
+  }
+
+  function getClickTarget(row) {
+    const safeSelector = [
+      '[data-action*="detail" i]',
+      '[data-action*="member" i]',
+      '[class*="detail" i]',
+      '[class*="name" i] a[href^="#"]',
+      'a[href^="#"]',
+      'a[href^="javascript"]',
+      'button:not([disabled])',
+      '[role="button"]',
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+    const target = row.querySelector && Array.from(row.querySelectorAll(safeSelector)).find(isVisible);
+    return target || row;
+  }
+
+  async function waitForModalAfterClick(beforeSet) {
+    const start = Date.now();
+    while (Date.now() - start < CONFIG.modalMaxWaitMs) {
+      const modals = getVisibleModals();
+      const fresh = modals.find(m => !beforeSet.has(m)) || modals[modals.length - 1];
+      if (fresh) return fresh;
+      await delay(120);
+    }
+    return null;
+  }
+
+  function hasActiveSpinner(container) {
+    if (!container) return false;
+    let spinners = [];
+    try {
+      spinners = Array.from(container.querySelectorAll('[class*="spinner" i], [class*="loading" i], .progress, [aria-busy="true"]'));
+    } catch (_) {}
+    return spinners.some(isActuallyVisibleAnywhere);
+  }
+
+  async function waitForStableModalText(modal) {
+    const start = Date.now();
+    let lastText = '';
+    let stableSince = 0;
+    while (Date.now() - start < CONFIG.modalMaxWaitMs) {
+      const text = cleanText(modal.innerText || modal.textContent || '');
+      const spinner = hasActiveSpinner(modal);
+      if (text && text === lastText && !spinner) {
+        if (!stableSince) stableSince = Date.now();
+        if (Date.now() - stableSince >= CONFIG.modalStableMs) return text;
+      } else {
+        stableSince = 0;
+        lastText = text;
+      }
+      await delay(120);
+    }
+    return cleanText(modal.innerText || modal.textContent || '');
+  }
+
+  async function openModalForRow(row) {
+    const beforeSet = new Set(getVisibleModals());
+    await scrollElementIntoView(row);
+    const target = getClickTarget(row);
+    clickLikeHuman(target);
+    const modal = await waitForModalAfterClick(beforeSet);
+    if (!modal) throw new Error('Modal did not appear before timeout');
+    await waitForStableModalText(modal);
+    return modal;
+  }
+
+  function extractEmailsFrom(container, text) {
+    const found = [];
+    try {
+      container.querySelectorAll('a[href^="mailto:"]').forEach(a => {
+        const href = a.getAttribute('href') || '';
+        const email = decodeURIComponent(href.replace(/^mailto:/i, '').split('?')[0]).trim();
+        if (email) found.push(email);
+      });
+    } catch (_) {}
+    const regex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+    let match;
+    while ((match = regex.exec(text || ''))) found.push(match[0]);
+    return uniqueClean(found.map(v => v.toLowerCase()));
+  }
+
+  function extractPhonesFrom(container, text) {
+    const found = [];
+    try {
+      container.querySelectorAll('a[href^="tel:"]').forEach(a => {
+        const href = a.getAttribute('href') || '';
+        const phone = decodeURIComponent(href.replace(/^tel:/i, '').split('?')[0]).trim();
+        if (phone) found.push(phone);
+      });
+    } catch (_) {}
+    const regex = /(?:\+?1[\s.\-]*)?(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4}(?:\s*(?:x|ext\.?|extension)\s*\d{1,6})?/gi;
+    let match;
+    while ((match = regex.exec(text || ''))) found.push(match[0]);
+    return uniqueClean(found.map(normalizePhoneDisplay));
+  }
+
+  function normalizePhoneDisplay(value) {
+    return oneLine(value).replace(/\s{2,}/g, ' ').trim();
+  }
+
+  function extractLinksFrom(container) {
+    const links = [];
+    try {
+      container.querySelectorAll('a[href]').forEach(a => {
+        const href = a.href || a.getAttribute('href') || '';
+        if (href && !/^javascript:/i.test(href)) links.push(href.trim());
+      });
+    } catch (_) {}
+    return uniqueClean(links);
+  }
+
+  function extractWebsitesFrom(container, text, allLinks) {
+    const sites = [];
+    for (const href of allLinks || []) {
+      if (/^https?:\/\//i.test(href) && !/^mailto:|^tel:/i.test(href)) sites.push(href);
+    }
+    const regex = /\b(?:https?:\/\/|www\.)[^\s<>'")]+|\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+\/(?:[^\s<>'")]+)?|\b[a-z0-9.-]+\.(?:com|net|org|info|biz|us|co|io|realtor|realestate)\b(?:\/[^\s<>'")]+)?/gi;
+    let match;
+    while ((match = regex.exec(text || ''))) {
+      const v = match[0].replace(/[.,;:]+$/g, '');
+      if (!/@/.test(v)) sites.push(v);
+    }
+    return uniqueClean(sites);
+  }
+
+  function uniqueClean(values) {
+    const seen = new Set();
+    const out = [];
+    for (const value of values || []) {
+      const v = oneLine(value).replace(/[;,]+$/g, '').trim();
+      if (!v) continue;
+      const key = v.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(v);
+      }
+    }
+    return out;
+  }
+
+  function structuredPairsFromDom(container) {
+    const pairs = [];
+    const labelSelector = [
+      'label',
+      'dt',
+      'th',
+      '[class*="label" i]',
+      '[class*="field-name" i]',
+      '[class*="fieldLabel" i]',
+      '[data-label]'
+    ].join(',');
+
+    let labels = [];
+    try { labels = Array.from(container.querySelectorAll(labelSelector)); } catch (_) { return pairs; }
+
+    for (const labelEl of labels) {
+      if (!isActuallyVisibleAnywhere(labelEl)) continue;
+      let label = oneLine(labelEl.getAttribute('data-label') || labelEl.innerText || labelEl.textContent || '');
+      label = label.replace(/:$/, '').trim();
+      if (!label || label.length > 70) continue;
+
+      let value = '';
+      if (labelEl.tagName === 'DT') {
+        let sib = labelEl.nextElementSibling;
+        while (sib && sib.tagName !== 'DD') sib = sib.nextElementSibling;
+        if (sib) value = oneLine(sib.innerText || sib.textContent || '');
+      }
+      if (!value && labelEl.tagName === 'TH') {
+        const td = labelEl.parentElement && labelEl.parentElement.querySelector('td');
+        if (td) value = oneLine(td.innerText || td.textContent || '');
+      }
+      if (!value && labelEl.nextElementSibling) {
+        value = oneLine(labelEl.nextElementSibling.innerText || labelEl.nextElementSibling.textContent || '');
+      }
+      if (!value && labelEl.parentElement) {
+        const siblings = Array.from(labelEl.parentElement.children || []).filter(isActuallyVisibleAnywhere);
+        const idx = siblings.indexOf(labelEl);
+        if (idx >= 0 && siblings[idx + 1]) value = oneLine(siblings[idx + 1].innerText || siblings[idx + 1].textContent || '');
+        if (!value) {
+          const parentText = cleanText(labelEl.parentElement.innerText || labelEl.parentElement.textContent || '');
+          const ownText = oneLine(labelEl.innerText || labelEl.textContent || '');
+          value = oneLine(parentText.replace(ownText, '').replace(/^\s*:\s*/, ''));
+        }
+      }
+      if (value && value !== label && value.length < 1000) pairs.push([label, value]);
+    }
+    return pairs;
+  }
+
+  function structuredPairsFromText(text) {
+    const pairs = [];
+    const lines = cleanText(text).split('\n').map(oneLine).filter(Boolean);
+
+    for (const line of lines) {
+      const inline = line.match(/^([A-Za-z][A-Za-z0-9 /#.&()_-]{1,70})\s*:\s*(.{1,1000})$/);
+      if (inline) pairs.push([inline[1], inline[2]]);
+    }
+
+    for (let i = 0; i < lines.length - 1; i++) {
+      const label = lines[i].replace(/:$/, '').trim();
+      const next = lines[i + 1].trim();
+      const labelNorm = label.toLowerCase();
+      if (label.length <= 70 && next && !/:$/.test(next) && (SIMPLE_FIELD_LABELS.has(labelNorm) || FIELD_ALIASES.some(([, pattern]) => pattern.test(labelNorm)))) {
+        pairs.push([label, next]);
+      }
+    }
+
+    return pairs;
+  }
+
+  function applyPair(record, label, value) {
+    const canonical = canonicalLabel(label);
+    const val = oneLine(value);
+    if (!canonical || !val || val === canonical) return;
+
+    if (REQUIRED_FIELDS.includes(canonical)) {
+      if (!record[canonical] || String(record[canonical]).length < val.length) record[canonical] = val;
+    } else {
+      const extraName = 'Extra - ' + canonical;
+      state.extraHeaders.add(extraName);
+      if (!record[extraName] || String(record[extraName]).length < val.length) record[extraName] = val;
+    }
+  }
+
+  function extractPopupDetails(modal, rowData) {
+    const rawText = cleanText(modal.innerText || modal.textContent || '');
+    const allLinks = extractLinksFrom(modal);
+    const allEmails = extractEmailsFrom(modal, rawText);
+    const allPhones = extractPhonesFrom(modal, rawText);
+    const allWebsites = extractWebsitesFrom(modal, rawText, allLinks);
+
+    const record = {
+      'Extraction Status': 'OK',
+      'Discovery Key': rowData.discoveryKey || '',
+      'Row Name': rowData['Row Name'] || '',
+      'Row Office': rowData['Row Office'] || '',
+      'Row License #': rowData['Row License #'] || '',
+      'Row Short ID': rowData['Row Short ID'] || '',
+      'Full Visible Row Text': rowData['Full Visible Row Text'] || '',
+      'Stable Row Attributes': rowData['Stable Row Attributes'] || '',
+      'Extracted At': new Date().toISOString(),
+      'Full Raw Popup Text': rawText,
+      'All Emails': allEmails.join('; '),
+      'All Phones': allPhones.join('; '),
+      'All Websites': allWebsites.join('; '),
+      'All Links': allLinks.join('; ')
+    };
+
+    for (const field of REQUIRED_FIELDS) {
+      if (record[field] == null) record[field] = '';
+    }
+
+    const pairs = [
+      ...structuredPairsFromDom(modal),
+      ...structuredPairsFromText(rawText)
+    ];
+    for (const [label, value] of pairs) applyPair(record, label, value);
+
+    if (!record.Email && allEmails[0]) record.Email = allEmails[0];
+    if (!record.Phone && allPhones[0]) record.Phone = allPhones[0];
+    if (!record.Mobile) {
+      const mobilePair = pairs.find(([label]) => /mobile|cell/i.test(label));
+      if (mobilePair) record.Mobile = oneLine(mobilePair[1]);
+    }
+    if (!record.Website && allWebsites[0]) record.Website = allWebsites[0];
+
+    applyRowFallbacks(record, rowData);
+    record['Result Key'] = buildResultKey(record, rowData);
+    return record;
+  }
+
+  function applyRowFallbacks(record, rowData) {
+    if (!record.Name && rowData['Row Name']) record.Name = rowData['Row Name'];
+    if (!record.Office && rowData['Row Office']) record.Office = rowData['Row Office'];
+    if (!record['License #'] && rowData['Row License #']) record['License #'] = rowData['Row License #'];
+    if (!record['Short ID'] && rowData['Row Short ID']) record['Short ID'] = rowData['Row Short ID'];
+  }
+
+  function buildResultKey(record, rowData) {
+    const parts = [
+      record['Short ID'],
+      record['License #'],
+      record.Email || (record['All Emails'] || '').split(';')[0],
+      record.Phone || (record['All Phones'] || '').split(';')[0],
+      record.Name || rowData['Row Name'],
+      record.Office || rowData['Row Office']
+    ].map(normalizeKeyPart).filter(Boolean);
+    if (parts.length) return parts.join(' | ');
+    return rowData.discoveryKey || ('result:' + simpleHash(JSON.stringify(record)));
+  }
+
+  function mergeDelimited(a, b) {
+    const parts = [];
+    for (const value of [a, b]) {
+      if (!value) continue;
+      String(value).split(/\s*;\s*/).forEach(v => { if (v) parts.push(v); });
+    }
+    return uniqueClean(parts).join('; ');
+  }
+
+  function recordRichness(record) {
+    return Object.values(record || {}).reduce((sum, value) => sum + (oneLine(value).length ? 1 : 0), 0);
+  }
+
+  function mergeRecords(existing, incoming) {
+    if (!existing) return { ...incoming };
+    const merged = { ...existing };
+    for (const [key, value] of Object.entries(incoming)) {
+      const incomingVal = typeof value === 'string' ? value : (value == null ? '' : String(value));
+      const existingVal = typeof merged[key] === 'string' ? merged[key] : (merged[key] == null ? '' : String(merged[key]));
+      if (!incomingVal) continue;
+      if (/^(All Emails|All Phones|All Websites|All Links)$/i.test(key)) {
+        merged[key] = mergeDelimited(existingVal, incomingVal);
+      } else if (key === 'Full Raw Popup Text') {
+        merged[key] = incomingVal.length > existingVal.length ? incomingVal : existingVal;
+      } else if (key === 'Extraction Status') {
+        merged[key] = existingVal === 'OK' ? existingVal : incomingVal;
+      } else if (!existingVal || incomingVal.length > existingVal.length) {
+        merged[key] = incomingVal;
+      }
+      if (key.startsWith('Extra - ')) state.extraHeaders.add(key);
+    }
+    if (recordRichness(incoming) > recordRichness(merged)) return { ...merged, ...incoming };
+    return merged;
+  }
+
+  function addOrMergeResult(record) {
+    const key = record['Result Key'] || buildResultKey(record, record);
+    record['Result Key'] = key;
+    const existing = state.resultsMap.get(key);
+    state.resultsMap.set(key, mergeRecords(existing, record));
+    refreshLiveResults();
+  }
+
+  function refreshLiveResults() {
+    window.IMAGINE_MLS_LIVE_RESULTS = Array.from(state.resultsMap.values());
+  }
+
+  function createFailureRecord(rowData, status, err) {
+    const record = {
+      'Extraction Status': err ? `${status}: ${err.message || err}` : status,
+      'Discovery Key': rowData.discoveryKey || '',
+      'Row Name': rowData['Row Name'] || '',
+      'Row Office': rowData['Row Office'] || '',
+      'Row License #': rowData['Row License #'] || '',
+      'Row Short ID': rowData['Row Short ID'] || '',
+      'Full Visible Row Text': rowData['Full Visible Row Text'] || '',
+      'Stable Row Attributes': rowData['Stable Row Attributes'] || '',
+      'Extracted At': new Date().toISOString(),
+      'Full Raw Popup Text': ''
+    };
+    for (const field of REQUIRED_FIELDS) if (record[field] == null) record[field] = '';
+    applyRowFallbacks(record, rowData);
+    record['Result Key'] = buildResultKey(record, rowData);
+    return record;
+  }
+
+  async function closeModal(modal) {
+    try {
+      const buttons = [];
+      for (const selector of CLOSE_BUTTON_SELECTORS) {
+        try { buttons.push(...Array.from((modal || document).querySelectorAll(selector))); } catch (_) {}
+      }
+      const btn = buttons.find(isVisible);
+      if (btn) {
+        clickLikeHuman(btn);
+      } else {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
+      }
+      const start = Date.now();
+      while (Date.now() - start < 2000) {
+        if (!modal || !isActuallyVisibleAnywhere(modal)) break;
+        await delay(80);
+      }
+    } catch (err) {
+      warn('Modal close failed; trying Escape fallback.', err);
+      try {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
+      } catch (_) {}
+    }
+    await delay(CONFIG.delayAfterModalClose);
+  }
+
+  function buildCsv(records) {
+    const extras = Array.from(state.extraHeaders).sort((a, b) => a.localeCompare(b));
+    const headers = uniqueClean([...BASE_HEADERS, ...REQUIRED_FIELDS, ...extras]);
+    const rows = [headers];
+    records.forEach((record, idx) => {
+      const out = { ...record, Index: idx + 1 };
+      rows.push(headers.map(header => csvEscape(out[header] == null ? '' : out[header])));
+    });
+    return rows.map(row => row.map(csvEscapeIfNeededPreEscaped).join(',')).join('\r\n');
+  }
+
+  function csvEscape(value) {
+    const str = String(value == null ? '' : value);
+    if (/[",\r\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"';
+    return str;
+  }
+
+  function csvEscapeIfNeededPreEscaped(value) {
+    return String(value == null ? '' : value);
+  }
+
+  function sanitizeFileName(name) {
+    let out = oneLine(name || '').replace(/[\\/:*?"<>|]+/g, '_').trim();
+    if (!out) out = 'imagine_mls_members_export.csv';
+    if (!/\.csv$/i.test(out)) out += '.csv';
+    return out;
+  }
+
+  function downloadCsvNow() {
+    const records = Array.from(state.resultsMap.values());
+    if (!records.length && state.discoveredMembers.size) {
+      for (const rowData of state.discoveredMembers.values()) {
+        addOrMergeResult(createFailureRecord(rowData, 'Discovered Only - No Popup Extracted'));
+      }
+    }
+    refreshLiveResults();
+    const csv = '\ufeff' + buildCsv(Array.from(state.resultsMap.values()));
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = sanitizeFileName(state.outputFileName);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 1000);
+    log(`CSV download triggered: ${a.download} (${state.resultsMap.size} records)`);
+  }
+
+  window.IMAGINE_MLS_DOWNLOAD_NOW = () => {
+    try {
+      downloadCsvNow();
+    } catch (err) {
+      console.error('[ImagineMLS Export] Emergency CSV download failed:', err);
+    }
+  };
+
+  async function discoveryPhase(listRoot, scroller) {
+    log('Phase 1 discovery started.');
+    await scrollToTop(scroller);
+    let idleRounds = 0;
+    let round = 0;
+
+    while (!window.STOP_IMAGINE_MLS_EXPORT && idleRounds < CONFIG.maxIdleDiscoveryRounds) {
+      round++;
+      const before = state.discoveredMembers.size;
+      const rows = getMemberRows(listRoot, { allowGlobalFallback: true });
+
+      for (const row of rows) {
+        try {
+          const rowData = extractVisibleRowData(row);
+          if (!state.discoveredMembers.has(rowData.discoveryKey)) {
+            state.discoveredMembers.set(rowData.discoveryKey, rowData);
+          } else {
+            const existing = state.discoveredMembers.get(rowData.discoveryKey);
+            state.discoveredMembers.set(rowData.discoveryKey, { ...existing, ...rowData });
+          }
+        } catch (err) {
+          debug('Row discovery parse failed:', err);
+        }
+      }
+
+      const clickedMore = await clickLoadMoreIfPresent();
+      const moved = await scrollForward(scroller);
+      const info = getScrollInfo(scroller);
+      const gained = state.discoveredMembers.size - before;
+      const hitIdle = gained === 0 && (info.atBottom || !moved) && !clickedMore;
+      idleRounds = hitIdle ? idleRounds + 1 : 0;
+
+      log(`Discovery round ${round}: visible rows=${rows.length}, unique discovered=${state.discoveredMembers.size}, idle=${idleRounds}/${CONFIG.maxIdleDiscoveryRounds}`);
+      if (round > 2500) {
+        warn('Discovery stopped after safety round limit. You can still download partial results.');
+        break;
+      }
+    }
+
+    log(`Phase 1 discovery complete. Unique members discovered: ${state.discoveredMembers.size}`);
+  }
+
+  async function extractionPhase(listRoot, scroller) {
+    log('Phase 2 popup extraction started.');
+    await scrollToTop(scroller);
+    const remaining = new Set(state.discoveredMembers.keys());
+    let idleRounds = 0;
+    let round = 0;
+    let extractedCount = 0;
+
+    while (!window.STOP_IMAGINE_MLS_EXPORT && remaining.size > 0 && idleRounds < CONFIG.maxIdleExtractionRounds) {
+      round++;
+      let extractedThisRound = 0;
+      const rows = getMemberRows(listRoot, { allowGlobalFallback: true });
+      const visibleKeysThisRound = new Set();
+
+      for (const row of rows) {
+        if (window.STOP_IMAGINE_MLS_EXPORT) break;
+        let currentRowData;
+        try {
+          currentRowData = extractVisibleRowData(row);
+        } catch (err) {
+          debug('Row parse during extraction failed:', err);
+          continue;
+        }
+
+        const key = currentRowData.discoveryKey;
+        if (visibleKeysThisRound.has(key)) continue;
+        visibleKeysThisRound.add(key);
+        if (!remaining.has(key) || state.extractedKeys.has(key)) continue;
+
+        const rowData = { ...state.discoveredMembers.get(key), ...currentRowData };
+        const attempts = state.modalAttempts.get(key) || 0;
+        if (attempts >= 2) {
+          state.extractedKeys.add(key);
+          remaining.delete(key);
+          continue;
+        }
+
+        try {
+          state.modalAttempts.set(key, attempts + 1);
+          const modal = await openModalForRow(row);
+          const record = extractPopupDetails(modal, rowData);
+          addOrMergeResult(record);
+          await closeModal(modal);
+          state.extractedKeys.add(key);
+          remaining.delete(key);
+          extractedCount++;
+          extractedThisRound++;
+
+          if (CONFIG.debugMode) console.debug('[ImagineMLS Export:record]', record);
+          if (extractedCount % CONFIG.progressEvery === 0 || remaining.size === 0) {
+            log(`Extraction progress: extracted=${extractedCount}, remaining=${remaining.size}, failed modals=${state.failedModalCount}`);
+          }
+        } catch (err) {
+          debug('Popup extraction failed for key:', key, err);
+          try { await closeModal(getVisibleModals().slice(-1)[0]); } catch (_) {}
+          if ((state.modalAttempts.get(key) || 0) >= 2) {
+            state.failedModalCount++;
+            addOrMergeResult(createFailureRecord(rowData, 'Modal Failed To Open', err));
+            state.extractedKeys.add(key);
+            remaining.delete(key);
+            extractedThisRound++;
+          }
+        }
+      }
+
+      const clickedMore = await clickLoadMoreIfPresent();
+      const moved = await scrollForward(scroller);
+      const info = getScrollInfo(scroller);
+      const hitIdle = extractedThisRound === 0 && (info.atBottom || !moved) && !clickedMore;
+      idleRounds = hitIdle ? idleRounds + 1 : 0;
+
+      if (round % Math.max(1, Math.floor(CONFIG.progressEvery / 10)) === 0 || extractedThisRound > 0 || idleRounds > 0) {
+        log(`Extraction round ${round}: extracted=${extractedCount}, remaining=${remaining.size}, failed modals=${state.failedModalCount}, idle=${idleRounds}/${CONFIG.maxIdleExtractionRounds}`);
+      }
+      if (round > 3500) {
+        warn('Extraction stopped after safety round limit. Remaining discovered rows will be included as not extracted.');
+        break;
+      }
+    }
+
+    for (const key of remaining) {
+      if (!state.extractedKeys.has(key)) {
+        const rowData = state.discoveredMembers.get(key);
+        const status = window.STOP_IMAGINE_MLS_EXPORT ? 'Stopped Before Extraction' : 'Not Revisited During Extraction';
+        addOrMergeResult(createFailureRecord(rowData, status));
+      }
+    }
+
+    log(`Phase 2 extraction complete. Results: ${state.resultsMap.size}; failed modals: ${state.failedModalCount}`);
+  }
+
+  try {
+    const suggestedName = CONFIG.outputFileName || `imagine_mls_members_${new Date().toISOString().slice(0, 10)}.csv`;
+    state.outputFileName = sanitizeFileName(prompt('CSV filename for ImagineMLS member export:', suggestedName) || suggestedName);
+
+    log('Scraper started. Keep this tab active. Stop with: window.STOP_IMAGINE_MLS_EXPORT = true');
+    log('Emergency partial download: window.IMAGINE_MLS_DOWNLOAD_NOW()');
+
+    const listRoot = findListRoot();
+    const scroller = detectScrollContainer(listRoot);
+    log('Detected list root:', cssPath(listRoot));
+    log('Detected scroll container:', cssPath(scroller));
+
+    await discoveryPhase(listRoot, scroller);
+
+    if (state.discoveredMembers.size === 0) {
+      warn('No members were discovered. Make sure the Members tab is open and visible.');
+    } else if (!window.STOP_IMAGINE_MLS_EXPORT) {
+      await extractionPhase(listRoot, scroller);
+    }
+
+    if (window.STOP_IMAGINE_MLS_EXPORT) {
+      warn('Manual stop flag detected. Downloading partial CSV.');
+      for (const [key, rowData] of state.discoveredMembers.entries()) {
+        if (!state.extractedKeys.has(key)) addOrMergeResult(createFailureRecord(rowData, 'Stopped Before Extraction'));
+      }
+    }
+
+    downloadCsvNow();
+  } catch (fatalErr) {
+    console.error('[ImagineMLS Export] Fatal error. Attempting partial CSV download.', fatalErr);
+    try { downloadCsvNow(); } catch (downloadErr) { console.error('[ImagineMLS Export] Partial CSV download also failed:', downloadErr); }
+  } finally {
+    window.__IMAGINE_MLS_EXPORT_RUNNING__ = false;
+    refreshLiveResults();
+    log('Scraper finished. Live results are in window.IMAGINE_MLS_LIVE_RESULTS');
+  }
+})();
