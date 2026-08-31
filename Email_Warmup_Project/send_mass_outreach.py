@@ -110,7 +110,7 @@ def get_html_signature(name, is_founder):
       <td width="3" style="background-color: #0056b3; vertical-align: top;">&nbsp;</td>
       <td style="vertical-align: top; padding-left: 15px;">
         <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">{full_name}</p>
-        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333333;">PrimeRealOps</p>
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Operations | <a href="https://primerealops.com" style="color: #000000; text-decoration: none;">PrimeRealOps.com</a></strong></p>
         <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; <a href="tel:+918805292130" style="text-decoration: underline; color: #0056b3;">+91 88052 92130</a>, <a href="tel:+19298338166" style="text-decoration: underline; color: #0056b3;">+1 (929) 833-8166</a></p>
         <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
         <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold;">
@@ -287,7 +287,7 @@ def load_accounts():
                 continue
                 
             # Determine properties
-            if email.lower() in ["vickythegeneralist@gmail.com"]:
+            if email.lower() in ["vickythegeneralist@gmail.com", "info@primerealops.com"]:
                 count = random.randint(20, 25)
                 is_founder = True
                 name = "Vicky Thakkar"
