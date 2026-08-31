@@ -155,15 +155,9 @@ def process_inbox_and_spam(account, all_emails):
                     nums = messages[0].split()
                     moved_count = 0
                     for num in nums:
-                        typ, data = mail.fetch(num, '(BODY.PEEK[HEADER.FIELDS (X-WARMUP-EMAIL)])')
-                        if typ == "OK":
-                            raw_email = data[0][1]
-                            msg = email.message_from_bytes(raw_email)
-                            x_warmup = msg.get("X-Warmup-Email", "")
-                            if x_warmup.strip().lower() == "true":
-                                mail.copy(num, "INBOX")
-                                mail.store(num, '+FLAGS', '\\Deleted')
-                                moved_count += 1
+                        mail.copy(num, "INBOX")
+                        mail.store(num, '+FLAGS', '\\Deleted')
+                        moved_count += 1
                     if moved_count > 0:
                         log.info(f"[{email_addr}] Found {moved_count} warmup emails in SPAM. Moved to Inbox...")
             mail.expunge()
