@@ -108,6 +108,8 @@ def get_html_signature(name, is_founder):
     <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold;">
       <a href="{calendly_link}" style="color: #0056b3; text-decoration: underline;">Book A Call</a> 
       <span style="color: #333333; margin: 0 5px;">|</span> 
+      <a href="https://www.linkedin.com/company/prime-real-ops/" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="16" height="16" alt="LinkedIn" style="vertical-align: middle; margin-bottom: 2px;"> LinkedIn</a>
+      <span style="color: #333333; margin: 0 5px;">|</span> 
       <a href="https://wa.me/16786789750" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="16" height="16" alt="WhatsApp" style="vertical-align: middle; margin-bottom: 2px;"> WhatsApp</a>
     </p>
     <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
@@ -277,7 +279,7 @@ def load_accounts():
                 continue
                 
             # Determine properties
-            if email.lower() in ["vickythegeneralist@gmail.com"]:
+            if email.lower() in ["vickythegeneralist@gmail.com", "info@primerealops.com"]:
                 count = random.randint(20, 25)
                 is_founder = True
                 name = "Vicky Thakkar"
