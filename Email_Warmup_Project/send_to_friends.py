@@ -63,8 +63,8 @@ def load_senders(filename="warmup_accounts.csv"):
                 e = row.get("Email", "").strip()
                 p = row.get("AppPassword", "").strip()
                 if e and p:
-                    # Exclude the specific emails requested
-                    if not any(x in e.lower() for x in ["vickythakkar6143", "diyflatfee", "info@primerealops"]):
+                    # Exclude specific accounts
+                    if not any(x in e.lower() for x in ["vickythakkar6143", "diyflatfee"]):
                         accounts.append({"email": e, "password": p})
     except Exception as e:
         log.error(f"Error loading {filename}: {e}")
