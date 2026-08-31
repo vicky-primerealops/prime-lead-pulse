@@ -1,14 +1,17 @@
 import sys
-from cleanup_warmup_emails import load_accounts, clean_account
+import imaplib
+from cleanup_warmup_emails import load_accounts
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO)
 
 accounts = load_accounts()
-warmup_set = set(acc["email"] for acc in accounts)
 info_acc = next(acc for acc in accounts if acc["email"] == "info@primerealops.com")
-clean_account(info_acc, warmup_set)
+
+try:
+    mail = imaplib.IMAP4_SSL("imap.secureserver.net")
+    mail.login(info_acc["email"], info_acc["password"])
+    logging.info("Login SUCCESS with imap.secureserver.net")
+except Exception as e:
+    logging.error(f"Login failed: {e}")
+

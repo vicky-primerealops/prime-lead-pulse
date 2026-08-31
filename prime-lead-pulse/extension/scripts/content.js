@@ -167,6 +167,7 @@ function getActiveSenderEmail() {
 
 // ARCHITECTURE: Subject is the PRIMARY matching criterion (proven reliable in detail view).
 // Recipient is ONLY used as a tiebreaker when multiple emails share the same subject.
+// When duplicates exist, prefer the record with MORE tracking events (the pixel is linked to ONE record).
 function findEmail(subject, recipientEmail) {
   if (!subject || emailCache.length === 0) return null;
 
@@ -187,22 +188,31 @@ function findEmail(subject, recipientEmail) {
   }
 
   if (subjectMatches.length === 0) return null;
-  if (subjectMatches.length === 1) return subjectMatches[0]; // Only one match — no ambiguity
+  if (subjectMatches.length === 1) return subjectMatches[0];
 
-  // Step 2: Multiple subject matches — use recipient to disambiguate
+  // Step 2: Multiple matches — try recipient to narrow down
+  let candidates = subjectMatches;
   if (recipientEmail) {
     const cleanRecip = recipientEmail.replace(/^To:\s*/i, '').trim().toLowerCase();
     if (cleanRecip) {
-      const recipMatch = subjectMatches.find(e => {
+      const recipMatches = subjectMatches.filter(e => {
         const dbRecip = (e.recipient || '').toLowerCase();
         return dbRecip.includes(cleanRecip) || cleanRecip.includes(dbRecip);
       });
-      if (recipMatch) return recipMatch;
+      if (recipMatches.length > 0) candidates = recipMatches;
     }
   }
 
-  // Step 3: Still ambiguous — return the most recent one (cache is sorted newest-first by API)
-  return subjectMatches[0];
+  // Step 3: Among remaining candidates, prefer the one with the MOST tracking activity.
+  // This handles duplicate CREATE_EMAIL records — the pixel URL is tied to ONE record,
+  // so the record with events is the "real" one.
+  candidates.sort((a, b) => {
+    const aActivity = (a.opens || 0) + (a.clicks || 0);
+    const bActivity = (b.opens || 0) + (b.clicks || 0);
+    return bActivity - aActivity; // Most activity first
+  });
+
+  return candidates[0];
 }
 
 // ------ API Calls via background ------
@@ -542,6 +552,10 @@ document.addEventListener('click', async (e) => {
 
   const checkbox = compose.querySelector('.prime-track-checkbox');
   if (!checkbox || !checkbox.checked) return;
+
+  // Prevent duplicate CREATE_EMAIL if user double-clicks Send
+  if (compose.dataset.plpSending === 'true') return;
+  compose.dataset.plpSending = 'true';
 
   e.preventDefault();
   e.stopPropagation();
