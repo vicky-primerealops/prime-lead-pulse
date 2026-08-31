@@ -245,13 +245,25 @@ def get_contacts_from_sheet():
     )
     service = build("sheets", "v4", credentials=creds)
     
-    # We will read all the way to column M to get everything
-    result = (
-        service.spreadsheets()
-        .values()
-        .get(spreadsheetId=SPREADSHEET_ID, range="Sheet1!A2:M")
-        .execute()
-    )
+    # Add resilience for temporary network blips
+    for attempt in range(3):
+        try:
+            result = (
+                service.spreadsheets()
+                .values()
+                .get(spreadsheetId=SPREADSHEET_ID, range="Sheet1!A2:M")
+                .execute()
+            )
+            break
+        except Exception as e:
+            if attempt < 2:
+                import time
+                log.warning(f"Network error connecting to Google Sheets. Retrying in 5s... ({e})")
+                time.sleep(5)
+            else:
+                log.error("Failed to fetch Google Sheet after 3 attempts.")
+                raise e
+    
     rows = result.get("values", [])
     contacts = []
     
@@ -283,12 +295,21 @@ def get_contacts_from_sheet():
 
 def mark_as_sent(service, row):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    service.spreadsheets().values().update(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"Sheet1!M{row}",
-        valueInputOption="RAW",
-        body={"values": [[timestamp]]},
-    ).execute()
+    for attempt in range(3):
+        try:
+            service.spreadsheets().values().update(
+                spreadsheetId=SPREADSHEET_ID,
+                range=f"Sheet1!M{row}",
+                valueInputOption="RAW",
+                body={"values": [[timestamp]]},
+            ).execute()
+            break
+        except Exception as e:
+            if attempt < 2:
+                import time
+                time.sleep(5)
+            else:
+                log.error(f"Failed to update sheet for row {row}: {e}")
 
 MAX_EMAILS_PER_RUN = 75
 
