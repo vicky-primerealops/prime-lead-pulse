@@ -103,8 +103,8 @@ def get_html_signature(name, is_founder):
         return f"""
   <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 500px; font-family: Arial, Helvetica, sans-serif;">
     <tr>
-      <td width="110" style="vertical-align: top; text-align: center; padding-right: 15px;">
-        <img src="https://files.catbox.moe/dpexgs.gif" alt="PrimeRealOps" width="90" height="90" style="border-radius: 10%; display: block; margin: 0 auto 10px auto; object-fit: cover;">
+      <td width="135" style="vertical-align: top; text-align: center; padding-right: 15px;">
+        <img src="https://files.catbox.moe/dpexgs.gif" alt="PrimeRealOps" width="115" height="115" style="border-radius: 10%; display: block; margin: 0 auto 10px auto; object-fit: cover;">
         <a href="{calendly_link}" style="font-weight: bold; color: #0056b3; text-decoration: none; font-size: 13px;">Book A Call</a>
       </td>
       <td width="3" style="background-color: #0056b3; vertical-align: top;">&nbsp;</td>
@@ -147,12 +147,13 @@ def get_email_body_html(to_name, sender_name, is_founder):
 
     <p style="margin-bottom: 20px;">Your highest value as a broker is closing deals and scaling your team, not getting bogged down by backend administration and paperwork.</p>
 
-    <p style="margin-bottom: 20px;">At <a href="https://primerealops.com" class="blue-link">Prime Real Ops</a>, we function as your complete backend engine. We plug directly into your existing platforms to handle the heavy lifting across three core areas:</p>
+    <p style="margin-bottom: 20px;">At <a href="https://primerealops.com" class="blue-link">Prime Real Ops</a>, we function as your complete backend engine. We plug directly into your existing platforms to handle the heavy lifting across four core areas:</p>
 
     <ul style="margin-bottom: 20px; padding-left: 20px;">
       <li style="margin-bottom: 10px;"><strong>Listing Management:</strong> Flawless MLS data entry and compliance checks with a 100% accuracy guarantee.</li>
       <li style="margin-bottom: 10px;"><strong>Transaction Coordination:</strong> Seamless contract-to-close management to keep your clients happy and ensure on-time closings.</li>
       <li style="margin-bottom: 10px;"><strong>Executive Services:</strong> Dedicated, elite real estate VAs to manage your inbox, CRM, and daily operational friction.</li>
+      <li style="margin-bottom: 10px;"><strong>Prime Lead Bridge:</strong> Our Robust backend mechanism that routes the callers and enquirers directly to the sellers in real time so no lead is missed 24/7. You can set it up to ring to you or any agent in your firm if you prefer it to.</li>
     </ul>
 
     <p style="margin-bottom: 20px;">With our 72-Hour Rapid Deployment, we can take this off your plate seamlessly with minimal onboarding downtime.</p>
