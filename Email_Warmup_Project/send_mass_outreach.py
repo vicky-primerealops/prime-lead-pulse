@@ -95,27 +95,35 @@ def get_html_signature(name, is_founder):
             "Aisha": "Aisha Patel",
             "Dan": "Dan Kenton",
             "Samantha": "Samantha Wheeler",
-            "Nisha": "Nisha Desai"
+            "Nisha": "Nisha Desai",
+            "Info": "Support Team"
         }
         full_name = full_names.get(name, f"{name} Thakkar") # Default fallback
         
         return f"""
-  <div style="font-family: Arial, Helvetica, sans-serif;">
-    <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">{full_name}</p>
-    <p style="margin: 0 0 10px 0; font-size: 13px; color: #000000;"><strong>Operations | <a href="https://primerealops.com" style="color: #000000; text-decoration: none;">PrimeRealOps.com</a></strong></p>
-    <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; +91 88052 92130, +1 (929) 833-8166</p>
-    <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
-    <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold;">
-      <a href="{calendly_link}" style="color: #0056b3; text-decoration: underline;">Book A Call</a> 
-      <span style="color: #333333; margin: 0 5px;">|</span> 
-      <a href="https://www.linkedin.com/company/prime-real-ops/" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="16" height="16" alt="LinkedIn" style="vertical-align: middle; margin-bottom: 2px;"> LinkedIn</a>
-      <span style="color: #333333; margin: 0 5px;">|</span> 
-      <a href="https://wa.me/16786789750" style="text-decoration: none; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="16" height="16" alt="WhatsApp" style="vertical-align: middle; margin-bottom: 2px;"> WhatsApp</a>
-    </p>
-    <p style="margin: 0; font-size: 12px; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #333333;">
-      "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
-    </p>
-  </div>
+  <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 500px; font-family: Arial, Helvetica, sans-serif;">
+    <tr>
+      <td width="110" style="vertical-align: top; text-align: center; padding-right: 15px;">
+        <img src="https://files.catbox.moe/dpexgs.gif" alt="PrimeRealOps" width="90" height="90" style="border-radius: 10%; display: block; margin: 0 auto 10px auto; object-fit: cover;">
+        <a href="{calendly_link}" style="font-weight: bold; color: #0056b3; text-decoration: none; font-size: 13px;">Book A Call</a>
+      </td>
+      <td width="3" style="background-color: #0056b3; vertical-align: top;">&nbsp;</td>
+      <td style="vertical-align: top; padding-left: 15px;">
+        <p style="margin: 0 0 2px 0; font-size: 17px; font-weight: bold; color: #000000; font-family: Georgia, serif;">{full_name}</p>
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333333;">PrimeRealOps</p>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: #333333;">&#128222; <a href="tel:+918805292130" style="text-decoration: underline; color: #0056b3;">+91 88052 92130</a>, <a href="tel:+19298338166" style="text-decoration: underline; color: #0056b3;">+1 (929) 833-8166</a></p>
+        <p style="margin: 0 0 10px 0; font-size: 12px; color: #333333;">&#128205; Mumbai, India</p>
+        <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold;">
+          <a href="https://www.linkedin.com/company/prime-real-ops/" style="text-decoration: none; color: #0056b3; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="16" height="16" alt="LinkedIn" style="vertical-align: middle; margin-bottom: 2px;"> LinkedIn</a>
+          <span style="color: #999999; margin: 0 5px;">|</span>
+          <a href="https://wa.me/16786789750" style="text-decoration: none; color: #0056b3; vertical-align: middle;"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" width="16" height="16" alt="WhatsApp" style="vertical-align: middle; margin-bottom: 2px;"> WhatsApp</a>
+        </p>
+        <p style="margin: 0; font-size: 12px; font-style: italic; font-weight: bold; line-height: 1.6; font-family: Georgia, serif; color: #000000;">
+          "Jack of all trades, master of none,<br>But oftentimes better than a master of one."
+        </p>
+      </td>
+    </tr>
+  </table>
 """
 
 def get_email_body_html(to_name, sender_name, is_founder):
@@ -279,7 +287,7 @@ def load_accounts():
                 continue
                 
             # Determine properties
-            if email.lower() in ["vickythegeneralist@gmail.com", "info@primerealops.com"]:
+            if email.lower() in ["vickythegeneralist@gmail.com"]:
                 count = random.randint(20, 25)
                 is_founder = True
                 name = "Vicky Thakkar"
