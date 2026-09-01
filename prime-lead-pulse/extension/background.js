@@ -251,7 +251,10 @@ async function pollForNotifications() {
       const eventTime = new Date(ev.created_at).getTime();
       if (Date.now() - eventTime > 10 * 60 * 1000) continue; 
 
-      const key = `${email.id}_${ev.event_type}`;
+      // Group by subject instead of email.id so that multiple opens in the same thread
+      // (e.g., when a recipient opens a conversation with 3 tracked replies)
+      // are bundled into a single notification.
+      const key = `${email.subject}_${ev.event_type}`;
       if (!grouped[key]) {
         grouped[key] = { email, eventType: ev.event_type, count: 0 };
       }
