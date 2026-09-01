@@ -595,9 +595,13 @@ document.addEventListener('click', async (e) => {
           body.appendChild(pixel);
 
           body.querySelectorAll('a').forEach(a => {
-            if (!a.href.startsWith('mailto:')) {
-              a.href = `${base}/api/track/link/${email.id}?url=${encodeURIComponent(a.href)}`;
-            }
+            // Ignore mailto links
+            if (a.href.startsWith('mailto:')) return;
+            
+            // Ignore links inside the signature block or previous quoted replies
+            if (a.closest('.gmail_signature') || a.closest('.gmail_quote')) return;
+
+            a.href = `${base}/api/track/link/${email.id}?url=${encodeURIComponent(a.href)}`;
           });
         }
         checkbox.checked = false;
