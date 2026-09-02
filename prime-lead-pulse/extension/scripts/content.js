@@ -644,7 +644,7 @@ setInterval(() => {
     injectSentBadges();
     injectEmailViewFeatures();
   });
-}, 15000);
+}, 5000);
 
 // Initial load
 fetchEmailStats().then(() => {
