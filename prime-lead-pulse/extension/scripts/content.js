@@ -233,6 +233,11 @@ async function fetchEmailStats() {
           return { ...email, opens: opens.length, clicks: clicks.length, status, events: email.tracking_events || [] };
         });
         console.log(`Prime Lead Pulse: Cache loaded with ${emailCache.length} tracked emails.`);
+        // Force a UI refresh now that we have new data
+        setTimeout(() => {
+          injectSentBadges();
+          injectEmailViewFeatures();
+        }, 100);
       } else {
         statsError = response?.error || 'Failed to connect';
         console.error('Prime Lead Pulse: Failed to fetch stats.', statsError);
