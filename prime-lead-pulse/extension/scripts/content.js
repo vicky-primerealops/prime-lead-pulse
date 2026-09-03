@@ -171,7 +171,8 @@ function getActiveSenderEmail() {
 function findEmail(subject, recipientEmail) {
   if (!subject || emailCache.length === 0) return null;
 
-  const strip = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanPrefixes = s => (s || '').replace(/^((Re|Fwd):\s*)+/ig, '').trim();
+  const strip = s => cleanPrefixes(s).toLowerCase().replace(/[^a-z0-9]/g, '');
   const uiSubj = strip(subject);
   if (uiSubj.length === 0) return null;
 
