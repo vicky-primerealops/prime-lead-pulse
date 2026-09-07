@@ -56,10 +56,10 @@ def generate_spun_content(to_name, state):
     ]
     
     pitches = [
-        "Instead of paying Zillow for a lead and hoping to convert it, we send you a signed-up seller and pay you $150 upfront just to list them on the MLS. Plus, for full-service listings, we don't charge the seller any upfront fee, and we simply split the commission 70/30 (with 30% going to DIY Realty).",
-        "Why pay Zillow for cold leads when we can hand you signed-up sellers? We pay you $150 upfront just for placing our clients on the MLS. For sellers wanting full service, there is no upfront fee, and we simply do a 70/30 commission split (30% to DIY Realty).",
-        "Rather than buying Zillow leads and chasing conversions, you can get signed-up sellers sent straight to you. We pay you $150 upfront for every flat-fee MLS entry. For full-service clients, there's zero upfront cost to them, and we share the commission on a 70/30 split (30% to DIY Realty).",
-        "Stop paying Zillow for expensive leads! We deliver ready-to-go, signed-up sellers directly to your pipeline. For flat-fee entries, we pay you $150 upfront to put them on the MLS. For full-service listings, there is no upfront fee and the commission is split 70/30 (30% to DIY Realty)."
+        "Instead of paying Zillow for leads you still have to convert, we'd rather just send you signed-up sellers. We pay you $150 upfront just to put our flat-fee clients on the MLS. And if they want full service, there's no upfront fee—we just do a 70/30 commission split (you keep 70%).",
+        "We realized it makes way more sense to hand you ready-to-go sellers rather than having you buy Zillow leads. We pay $150 upfront for you to list our flat-fee sellers on the MLS. If they want full service instead, there's no upfront fee for them, and we just split the commission 70/30 (30% to DIY).",
+        "Rather than you guys paying Zillow for cold leads, we can just send you signed-up sellers directly. For flat-fee listings, we pay you $150 upfront to put them on the MLS. If it's a full-service listing, we don't charge any upfront fee and just split the commission 70/30 (where DIY keeps 30%).",
+        "It's much easier for everyone if we just send you actual signed-up sellers rather than you paying Zillow for leads. We pay $150 upfront just to get our flat-fee clients on the MLS. For the full-service ones, there's no upfront fee at all—we just do a straight 70/30 commission split (30% to DIY)."
     ]
     
     ctas = [
@@ -311,7 +311,7 @@ def mark_as_sent(service, row):
             else:
                 log.error(f"Failed to update sheet for row {row}: {e}")
 
-MAX_EMAILS_PER_RUN = 75
+MAX_EMAILS_PER_RUN = 5
 
 def send_diy_outreach():
     log.info("Starting DIY Flat Fee MLS outreach campaign...")
