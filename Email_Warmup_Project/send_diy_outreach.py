@@ -56,10 +56,10 @@ def generate_spun_content(to_name, state):
     ]
     
     pitches = [
-        "We pay a standard upfront fee of $150 for every MLS entry you process for our clients. This is a risk-free way to add a steady stream of listings to your pipeline with zero marketing cost or effort on your end.",
-        "Our standard payout is $150 upfront for each MLS entry you handle for our sellers. It's a completely risk-free method to increase your listing inventory without spending any time or money on marketing.",
-        "We compensate our partners with a flat $150 upfront for every listing entered into the MLS for our clients. It's a great, risk-free opportunity to build your pipeline with absolutely zero marketing spend on your part.",
-        "You'll receive a guaranteed $150 upfront for every MLS listing you process on behalf of our clients. This gives you a consistent flow of new listings with zero customer acquisition costs."
+        "Instead of paying Zillow for a lead and hoping to convert it, we send you a signed-up seller and pay you $150 upfront just to list them on the MLS. Plus, for full-service listings, we don't charge the seller any upfront fee, and we simply split the commission 70/30 (with 30% going to DIY Realty).",
+        "Why pay Zillow for cold leads when we can hand you signed-up sellers? We pay you $150 upfront just for placing our clients on the MLS. For sellers wanting full service, there is no upfront fee, and we simply do a 70/30 commission split (30% to DIY Realty).",
+        "Rather than buying Zillow leads and chasing conversions, you can get signed-up sellers sent straight to you. We pay you $150 upfront for every flat-fee MLS entry. For full-service clients, there's zero upfront cost to them, and we share the commission on a 70/30 split (30% to DIY Realty).",
+        "Stop paying Zillow for expensive leads! We deliver ready-to-go, signed-up sellers directly to your pipeline. For flat-fee entries, we pay you $150 upfront to put them on the MLS. For full-service listings, there is no upfront fee and the commission is split 70/30 (30% to DIY Realty)."
     ]
     
     ctas = [
