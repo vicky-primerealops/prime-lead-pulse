@@ -49,10 +49,10 @@ def generate_spun_content(to_name, state):
     ]
     
     openers = [
-        f"I'm reaching out because DIY Realty™ is transitioning our model and we are looking for a reliable partner broker in {state} to handle our Flat Fee MLS listings.",
-        f"I'm contacting you today because DIY Realty™ is shifting our operational model, and we are searching for a dependable partner broker in {state} for our Flat Fee MLS listings.",
-        f"My name is Vicky and our brokerage is currently expanding our flat fee model. We're looking for a trusted partner broker in {state} to manage our MLS listings.",
-        f"I am getting in touch because DIY Realty™ is updating its business model, and we need a reliable real estate partner in {state} to help process our Flat Fee MLS listings."
+        f"I'm reaching out because DIY Realty™ is transitioning our model. If you are a broker, we'd love to connect, as we are looking to partner directly with a reliable broker in {state} to handle our Flat Fee MLS listings rather than working with individual agents.",
+        f"I'm contacting you today because DIY Realty™ is shifting our operational model. We are specifically searching for a dependable partner broker in {state}—if you are a broker rather than an agent, we want to work with you on our Flat Fee MLS listings.",
+        f"My name is Vicky and our brokerage is currently expanding our flat fee model. If you are a broker, we're looking for a trusted partner like you in {state} to manage our MLS listings (we prefer partnering directly with brokers over agents).",
+        f"I am getting in touch because DIY Realty™ is updating its business model. We're looking for a reliable real estate partner in {state}, and if you are a broker, we'd love to chat since we are looking to work with brokers rather than agents."
     ]
     
     pitches = [
