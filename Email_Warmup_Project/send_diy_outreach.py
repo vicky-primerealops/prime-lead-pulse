@@ -283,6 +283,9 @@ def get_contacts_from_sheet():
         if sent_status:  # Skip already sent
             continue
             
+        if state.upper() == "IL": # Skip Illinois people
+            continue
+            
         if name and email and "@" in email:
             contacts.append({
                 "name": name, 
@@ -311,7 +314,7 @@ def mark_as_sent(service, row):
             else:
                 log.error(f"Failed to update sheet for row {row}: {e}")
 
-MAX_EMAILS_PER_RUN = 5
+MAX_EMAILS_PER_RUN = 100
 
 def send_diy_outreach():
     log.info("Starting DIY Flat Fee MLS outreach campaign...")
