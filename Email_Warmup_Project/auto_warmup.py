@@ -287,6 +287,10 @@ def main():
         time.sleep(next_delay)
         
     log.info("Warmup sequence complete for today. Good job!")
+    
+    log.info("Starting automatic cleanup of warmup emails...")
+    import cleanup_warmup_emails
+    cleanup_warmup_emails.main()
 
 if __name__ == "__main__":
     main()
