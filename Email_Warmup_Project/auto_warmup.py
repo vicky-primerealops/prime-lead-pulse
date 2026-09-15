@@ -233,7 +233,7 @@ def send_new_emails(account, all_emails):
     server_info = get_server_info(sender_email)
     
     # Define how many total new emails this account will initiate
-    num_to_send = random.randint(20, 30)
+    num_to_send = random.randint(7, 10)
     possible_receivers = [e for e in all_emails if e != sender_email]
     num_to_send = min(num_to_send, len(possible_receivers))
     receivers = random.sample(possible_receivers, num_to_send)

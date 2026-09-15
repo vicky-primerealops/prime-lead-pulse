@@ -289,7 +289,7 @@ def load_accounts():
                 
             # Determine properties
             if email.lower() in ["vickythegeneralist@gmail.com", "info@primerealops.com"]:
-                count = random.randint(20, 25)
+                count = random.randint(7, 10)
                 is_founder = True
                 name = "Vicky Thakkar"
             elif any(x in email.lower() for x in ["michael.primerealops", "shiva.primerealops", "michael.primerealops.com"]):
