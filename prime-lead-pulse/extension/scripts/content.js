@@ -548,6 +548,26 @@ function injectComposeTool(composeWindow) {
 }
 
 // ------ Send Interception ------
+// Catch Ctrl+Enter / Cmd+Enter keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    const compose = e.target.closest('div[role="dialog"], .M9');
+    if (!compose) return;
+    
+    const checkbox = compose.querySelector('.prime-track-checkbox');
+    if (!checkbox || !checkbox.checked) return;
+    
+    const sendBtn = compose.querySelector('div[aria-label^="Send"], .T-I.J-J5-Ji.aoO.v7.T-I-atl.L3');
+    if (sendBtn) {
+      // Prevent Gmail from sending immediately via keyboard
+      e.preventDefault();
+      e.stopPropagation();
+      // Simulate a click on the Send button so our click interceptor handles it
+      sendBtn.click();
+    }
+  }
+}, true);
+
 document.addEventListener('click', async (e) => {
   const isSend = e.target.closest('div[aria-label^="Send"]') ||
     e.target.closest('.T-I.J-J5-Ji.aoO.v7.T-I-atl.L3');
