@@ -548,9 +548,18 @@ function injectComposeTool(composeWindow) {
 }
 
 // ------ Send Interception ------
-// Catch Ctrl+Enter / Cmd+Enter keyboard shortcuts
+// Catch Ctrl+Enter / Cmd+Enter keyboard shortcuts AND focused Enter/Space
 document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+  const isCtrlEnter = (e.ctrlKey || e.metaKey) && e.key === 'Enter';
+  
+  const activeEl = document.activeElement;
+  const isSendBtnFocused = activeEl && (
+    activeEl.matches('div[aria-label^="Send"], .T-I.J-J5-Ji.aoO.v7.T-I-atl.L3') || 
+    activeEl.closest('div[aria-label^="Send"], .T-I.J-J5-Ji.aoO.v7.T-I-atl.L3')
+  );
+  const isFocusedEnter = isSendBtnFocused && (e.key === 'Enter' || e.key === ' ');
+
+  if (isCtrlEnter || isFocusedEnter) {
     const compose = e.target.closest('div[role="dialog"], .M9');
     if (!compose) return;
     
