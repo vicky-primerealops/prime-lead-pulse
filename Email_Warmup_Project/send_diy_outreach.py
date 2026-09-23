@@ -231,7 +231,7 @@ def build_message(to_name, to_email, location_state, from_user):
     return msg
 
 
-def get_contacts_from_sheet():
+def get_contacts_from_sheet(target_states=None):
     """
     Reads the Google Sheet. Expects the full Zillow CSV export:
     A (0): Agent Name
@@ -283,6 +283,9 @@ def get_contacts_from_sheet():
         if sent_status:  # Skip already sent
             continue
             
+        if target_states and state.upper() not in target_states: # Only target specific states if provided
+            continue
+            
         if state.upper() == "IL": # Skip Illinois people
             continue
             
@@ -316,10 +319,10 @@ def mark_as_sent(service, row):
 
 MAX_EMAILS_PER_RUN = 100
 
-def send_diy_outreach():
+def send_diy_outreach(target_states=None):
     log.info("Starting DIY Flat Fee MLS outreach campaign...")
     
-    contacts, service = get_contacts_from_sheet()
+    contacts, service = get_contacts_from_sheet(target_states)
     
     if not contacts:
         log.info("No new contacts to email. Exiting.")
@@ -369,4 +372,8 @@ def send_diy_outreach():
     log.info("Outreach campaign completed.")
 
 if __name__ == "__main__":
-    send_diy_outreach()
+    print(f"Max emails per run is currently set to: {MAX_EMAILS_PER_RUN}")
+    states_input = input("Enter state abbreviations separated by comma (e.g. WV, FL) or leave blank for all (excluding IL): ")
+    target_states = [s.strip().upper() for s in states_input.split(',')] if states_input.strip() else None
+    
+    send_diy_outreach(target_states)
