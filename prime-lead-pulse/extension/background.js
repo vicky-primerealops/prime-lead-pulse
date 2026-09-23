@@ -251,10 +251,10 @@ async function pollForNotifications() {
       const eventTime = new Date(ev.created_at).getTime();
       if (Date.now() - eventTime > 10 * 60 * 1000) continue; 
 
-      // Group by subject instead of email.id so that multiple opens in the same thread
-      // (e.g., when a recipient opens a conversation with 3 tracked replies)
-      // are bundled into a single notification.
-      const key = `${email.subject}_${ev.event_type}`;
+      // Group by normalized subject instead of email.id so that multiple opens in the same thread
+      // (e.g., "Subject" and "Re: Subject") are bundled into a single notification.
+      const cleanSubject = (email.subject || '').replace(/^((Re|Fwd|Fw):\s*)+/ig, '').trim().toLowerCase();
+      const key = `${cleanSubject}_${ev.event_type}`;
       if (!grouped[key]) {
         grouped[key] = { email, eventType: ev.event_type, count: 0 };
       }
@@ -282,7 +282,11 @@ async function pollForNotifications() {
         message += ` (${count} times)`;
       }
         
-      chrome.notifications.create(`${key}_${Date.now()}`, {
+      // Use a 1-minute bucket for the notification ID.
+      // This ensures that if 3 pixels fire within 60 seconds of each other across different polling cycles,
+      // they simply update the ONE existing notification on the screen rather than stacking 3 popups.
+      const timeBucket = Math.floor(Date.now() / 60000);
+      chrome.notifications.create(`${key}_${timeBucket}`, {
         type: 'basic',
         iconUrl: 'icon.gif',
         title,
