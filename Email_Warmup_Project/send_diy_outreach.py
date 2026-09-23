@@ -286,9 +286,6 @@ def get_contacts_from_sheet(target_states=None):
         if target_states and state.upper() not in target_states: # Only target specific states if provided
             continue
             
-        if state.upper() == "IL": # Skip Illinois people
-            continue
-            
         if name and email and "@" in email:
             contacts.append({
                 "name": name, 
@@ -373,7 +370,7 @@ def send_diy_outreach(target_states=None):
 
 if __name__ == "__main__":
     print(f"Max emails per run is currently set to: {MAX_EMAILS_PER_RUN}")
-    states_input = input("Enter state abbreviations separated by comma (e.g. WV, FL) or leave blank for all (excluding IL): ")
+    states_input = input("Enter state abbreviations separated by comma (e.g. WV, FL) or leave blank for all: ")
     target_states = [s.strip().upper() for s in states_input.split(',')] if states_input.strip() else None
     
     send_diy_outreach(target_states)
