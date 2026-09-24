@@ -398,7 +398,7 @@ def delete_warmup_emails_in_folder(mail, folder, warmup_set):
                             num = msg_data[0].split()[0]
                             
                             try:
-                                msg = emaillib.message_from_bytes(header_bytes)
+                                msg = email.message_from_bytes(header_bytes)
                                 from_addrs = extract_addresses(msg.get("From", ""))
                                 to_addrs   = extract_addresses(msg.get("To", ""))
                                 cc_addrs   = extract_addresses(msg.get("Cc", ""))
