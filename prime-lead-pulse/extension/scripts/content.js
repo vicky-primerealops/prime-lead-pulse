@@ -667,14 +667,27 @@ const observer = new MutationObserver(() => {
 
 observer.observe(document.body, { childList: true, subtree: true });
 
-// ------ Stats Polling (reduced from 3s to 15s) ------
+// ------ Stats Polling ------
 // Background.js alarm handles notifications independently, so we only need to refresh badge UI here.
+// ONLY poll when the tab is actively visible to save massive API bandwidth and prevent Vercel limits.
 setInterval(() => {
-  fetchEmailStats().then(() => {
-    injectSentBadges();
-    injectEmailViewFeatures();
-  });
-}, 5000);
+  if (document.visibilityState === 'visible') {
+    fetchEmailStats().then(() => {
+      injectSentBadges();
+      injectEmailViewFeatures();
+    });
+  }
+}, 30000); // 30 seconds
+
+// Instantly refresh when the user switches back to this Gmail tab
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    fetchEmailStats().then(() => {
+      injectSentBadges();
+      injectEmailViewFeatures();
+    });
+  }
+});
 
 // Initial load
 fetchEmailStats().then(() => {
