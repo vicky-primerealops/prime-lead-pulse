@@ -72,7 +72,11 @@ export async function GET(request: Request) {
     let query = supabase
       .from('emails')
       .select(`
-        *,
+        id,
+        sender_email,
+        recipient,
+        subject,
+        created_at,
         tracking_events (
           id,
           event_type,
@@ -80,7 +84,8 @@ export async function GET(request: Request) {
           created_at
         )
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     // If filtering by a specific sender (for the Gmail extension)
     if (senderEmail) {
